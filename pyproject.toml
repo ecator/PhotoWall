@@ -1,0 +1,22 @@
+[project]
+name = "photowall"
+version = "0.1.0"
+description = "一款基于预生成元数据的轻量级照片墙"
+readme = "README.md"
+authors = [{ name = "Martin", email = "qule520@126.com" }]
+requires-python = ">=3.14"
+dependencies = [
+    "huggingface-hub>=2.3.0",
+    "numpy>=2.5.4",
+    "onnxruntime-directml>=1.24.4",
+    "onnxruntime-gpu>=1.31.0",
+    "pillow>=13.0.0",
+    "tqdm>=4.70.1",
+]
+
+[project.scripts]
+photowall = "photowall:main"
+
+[build-system]
+requires = ["uv_build>=0.12.7,<0.13.0"]
+build-backend = "uv_build"

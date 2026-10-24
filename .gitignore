@@ -3,3 +3,5 @@ assets.js
 tags.json
 .cache/
 __pycache__/
+.venv/
+test*.py

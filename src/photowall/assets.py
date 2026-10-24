@@ -1,10 +1,3 @@
-# /// script
-# requires-python = "~=3.14.0"
-# dependencies = [
-#     "pillow>=10.0.0",
-#     "tqdm>=4.66.0",
-# ]
-# ///
 """
 assets.py - 照片墙元数据生成脚本
 
@@ -32,17 +25,17 @@ import sys
 import urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 from PIL import ExifTags, Image
 from tqdm import tqdm
 
 # 支持的文件后缀定义
-IMAGE_EXTENSIONS: Set[str] = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
-VIDEO_EXTENSIONS: Set[str] = {".mp4", ".webm"}
+IMAGE_EXTENSIONS: set[str] = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
+VIDEO_EXTENSIONS: set[str] = {".mp4", ".webm"}
 
 
-def natural_sort_key(s: str) -> List[Any]:
+def natural_sort_key(s: str) -> list[Any]:
     """自然排序键函数 (使 2.jpg 排在 10.jpg 前面，对中文与英文路径均生效)。"""
     return [
         int(text) if text.isdigit() else text.lower() for text in re.split(r"(\d+)", s)
@@ -56,14 +49,14 @@ def encode_url_path(rel_path: str) -> str:
     return "/".join(encoded_parts)
 
 
-def get_image_info(path: Path) -> Tuple[int, int, Optional[int]]:
+def get_image_info(path: Path) -> tuple[int, int, int | None]:
     """
     使用 Pillow 读取图片信息：
     返回: (实际显示宽度, 实际显示高度, EXIF 拍摄时间戳)
     自动校正 EXIF Orientation 旋转 (5, 6, 7, 8 交换宽高)。
     """
     width, height = 0, 0
-    exif_timestamp: Optional[int] = None
+    exif_timestamp: int | None = None
 
     try:
         with Image.open(path) as img:
@@ -78,7 +71,7 @@ def get_image_info(path: Path) -> Tuple[int, int, Optional[int]]:
                     width, height = height, width
 
             # 2. 尝试读取真实拍摄时间 (DateTimeOriginal / DateTime)
-            dt_str: Optional[str] = None
+            dt_str: str | None = None
             if hasattr(img, "_getexif"):
                 raw_exif = img._getexif()
                 if raw_exif:
@@ -168,9 +161,9 @@ def get_video_duration(path: Path) -> float:
     return 0.0
 
 
-def extract_directory_tags(folder_path: str) -> List[str]:
+def extract_directory_tags(folder_path: str) -> list[str]:
     """从文件夹路径中提取有意义的分类标签 (过滤掉 [60P 1GB]、NO.172、纯数字等噪点)。"""
-    tags: List[str] = []
+    tags: list[str] = []
     if not folder_path:
         return tags
 
@@ -190,9 +183,9 @@ def extract_directory_tags(folder_path: str) -> List[str]:
 
 def compute_aspect_tags(
     width: int, height: int, ext: str, media_type: str
-) -> List[str]:
+) -> list[str]:
     """根据画面尺寸与文件格式生成形态属性标签。"""
-    tags: List[str] = []
+    tags: list[str] = []
     if media_type == "image":
         if width > 0 and height > 0:
             ratio = width / height
@@ -215,8 +208,8 @@ def compute_aspect_tags(
 
 
 def parse_media_file(
-    item: Tuple[Path, str, str, int, int],
-) -> Tuple[str, int, int, int, int, float]:
+    item: tuple[Path, str, str, int, int],
+) -> tuple[str, int, int, int, int, float]:
     """
     单文件解析任务 (供多线程池并发调用)。
     返回: (rel_path, size, mtime, width, height, final_timestamp, duration)
@@ -265,8 +258,8 @@ def main():
         sys.exit(1)
 
     # 1. 检查并读取 tags.json
-    tags_data: Optional[Dict[str, Any]] = None
-    tags_cache: Dict[str, Dict[str, Any]] = {}
+    tags_data: dict[str, Any] | None = None
+    tags_cache: dict[str, dict[str, Any]] = {}
 
     if tags_file.is_file():
         try:
@@ -287,7 +280,7 @@ def main():
         print("=" * 70 + "\n")
 
     # 2. 读取媒体元数据缓存 (assets_cache.json)
-    media_cache: Dict[str, Dict[str, Any]] = {}
+    media_cache: dict[str, dict[str, Any]] = {}
     if not args.force and media_cache_file.is_file():
         try:
             with open(media_cache_file, "r", encoding="utf-8") as f:
@@ -300,7 +293,7 @@ def main():
 
     # 3. 扫描 assets 目录下的所有媒体文件
     print(f"[*] 扫描资源目录: {assets_dir.resolve()}")
-    raw_files: List[Path] = []
+    raw_files: list[Path] = []
     for p in assets_dir.rglob("*"):
         if p.is_file():
             ext = p.suffix.lower()
@@ -312,9 +305,9 @@ def main():
     print(f"[*] 扫描到媒体文件总数: {len(raw_files)}")
 
     # 4. 统计文件属性并比对缓存 (检测新增、过期及已删除)
-    file_info_list: List[Tuple[Path, str, str, int, int]] = []
-    to_process: List[Tuple[Path, str, str, int, int]] = []
-    current_disk_set: Set[str] = set()
+    file_info_list: list[tuple[Path, str, str, int, int]] = []
+    to_process: list[tuple[Path, str, str, int, int]] = []
+    current_disk_set: set[str] = set()
 
     for p in raw_files:
         rel_to_assets = p.relative_to(assets_dir).as_posix()
@@ -353,6 +346,7 @@ def main():
                     unit="文件",
                 )
             )
+        # pyrefly: ignore[bad-unpacking]
         for (
             rel_path,
             file_size,
@@ -388,8 +382,8 @@ def main():
     temp_cache_file.replace(media_cache_file)
 
     # 7. 组装 items 媒体列表并融合标签
-    items: List[Dict[str, Any]] = []
-    all_folder_paths: Set[str] = {""}  # 根目录为 ""
+    items: list[dict[str, Any]] = []
+    all_folder_paths: set[str] = {""}  # 根目录为 ""
     mismatched_tags_count = 0
     missing_tags_count = 0
     total_size = 0
@@ -424,7 +418,7 @@ def main():
         duration = cached_meta.get("duration", 0.0)
 
         # 匹配 tags.json
-        ai_tags: List[str] = []
+        ai_tags: list[str] = []
         if tags_data is not None and media_type == "image":
             cached_entry = tags_cache.get(rel_to_assets)
             if cached_entry:
@@ -449,8 +443,8 @@ def main():
         dir_tags = extract_directory_tags(folder_path)
         aspect_tags = compute_aspect_tags(width, height, ext, media_type)
 
-        merged_tags_list: List[str] = []
-        seen_tags: Set[str] = set()
+        merged_tags_list: list[str] = []
+        seen_tags: set[str] = set()
         for t in dir_tags + ai_tags + aspect_tags:
             if t and t not in seen_tags:
                 seen_tags.add(t)
@@ -493,11 +487,11 @@ def main():
         key=lambda p: (0 if p == "" else 1, natural_sort_key(p)),
     )
 
-    folders: List[Dict[str, Any]] = []
+    folders: list[dict[str, Any]] = []
     for f_path in sorted_folder_paths:
         if f_path == "":
             f_name = "根目录"
-            parent: Optional[str] = None
+            parent: str | None = None
             depth = 0
         else:
             parts = f_path.split("/")
@@ -532,7 +526,7 @@ def main():
         folder_total_count = len(total_items)
 
         # 封面图：优先直属第一张图片，次选子目录第一张图片，无图则为 null
-        cover: Optional[str] = None
+        cover: str | None = None
         for it in direct_items:
             if it["type"] == "image":
                 cover = it["src"]
@@ -557,7 +551,7 @@ def main():
         folders.append(folder_obj)
 
     # 6. 聚合全局 tags 索引 (按出现次数降序排列)
-    tag_counts: Dict[str, int] = {}
+    tag_counts: dict[str, int] = {}
     for it in items:
         for t in it["tags"]:
             tag_counts[t] = tag_counts.get(t, 0) + 1

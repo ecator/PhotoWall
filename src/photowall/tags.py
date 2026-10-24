@@ -1,13 +1,3 @@
-# /// script
-# requires-python = "~=3.14.0"
-# dependencies = [
-#     "huggingface-hub>=0.20.0",
-#     "numpy>=1.24.0",
-#     "onnxruntime>=1.16.0",
-#     "pillow>=10.0.0",
-#     "tqdm>=4.66.0",
-# ]
-# ///
 """
 tags.py - 照片墙 WD14 Tagger 自动增量打标脚本
 
@@ -25,12 +15,10 @@ tags.py - 照片墙 WD14 Tagger 自动增量打标脚本
 import argparse
 import csv
 import json
-import os
 import sys
-import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any
 
 import numpy as np
 import onnxruntime as ort
@@ -59,7 +47,7 @@ MAX_RAW_TAGS_PER_IMAGE = (
 )
 
 # 全局黑名单 (中英文均可匹配，命中的标签不会出现在 tags 中)
-BLACKLIST: Set[str] = {
+BLACKLIST: set[str] = {
     # Danbooru 常见无意义构图/人数词
     "1girl",
     "2girls",
@@ -86,7 +74,7 @@ BLACKLIST: Set[str] = {
 }
 
 # 同义词归并映射 (原始词/译名 -> 规范词)
-ALIASES: Dict[str, str] = {
+ALIASES: dict[str, str] = {
     "水手服": "JK制服",
     "校服": "JK制服",
     "西装校服": "JK制服",
@@ -99,10 +87,10 @@ ALIASES: Dict[str, str] = {
 }
 
 # 支持的图片格式 (包含 GIF 动图，Pillow 会自动抽取 GIF 第一帧用于打标)
-IMAGE_EXTENSIONS: Set[str] = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
+IMAGE_EXTENSIONS: set[str] = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
 
 # 基础内置常用 Danbooru 标签汉化字典 (无需额外下载，开箱即用)
-BUILTIN_TRANSLATIONS: Dict[str, str] = {
+BUILTIN_TRANSLATIONS: dict[str, str] = {
     # 头发发色与发型
     "black_hair": "黑发",
     "blonde_hair": "金发",
@@ -255,9 +243,9 @@ ONLINE_TRANSLATION_URLS = [
 ]
 
 
-def parse_translation_csv(file_path: Path) -> Dict[str, str]:
+def parse_translation_csv(file_path: Path) -> dict[str, str]:
     """解析 tags_zh_cn.csv 汉化文件 (自动适配标准 2列、3列及带表头的字典格式)。"""
-    translations: Dict[str, str] = {}
+    translations: dict[str, str] = {}
     try:
         # 使用 utf-8-sig 自动处理 Windows/Excel 可能带来的 UTF-8 BOM
         with open(file_path, "r", encoding="utf-8-sig", errors="ignore") as f:
@@ -314,7 +302,7 @@ def parse_translation_csv(file_path: Path) -> Dict[str, str]:
     return translations
 
 
-def load_translations(base_dir: Path, cache_dir: Path) -> Dict[str, str]:
+def load_translations(base_dir: Path, cache_dir: Path) -> dict[str, str]:
     """
     加载中英翻译字典：
     1. 优先读取项目根目录下的本地文件: tags_zh_cn.csv / translations.json
@@ -384,7 +372,7 @@ def load_translations(base_dir: Path, cache_dir: Path) -> Dict[str, str]:
     return translations
 
 
-def get_model_and_tags(cache_dir: Path) -> Tuple[str, str]:
+def get_model_and_tags(cache_dir: Path) -> tuple[str, str]:
     """下载并获取 WD14 模型文件与词表路径 (自动缓存至本地)。"""
     print(f"[*] 检查模型文件: {MODEL_REPO}")
     model_path = hf_hub_download(
@@ -402,10 +390,10 @@ def get_model_and_tags(cache_dir: Path) -> Tuple[str, str]:
     return model_path, tags_path
 
 
-def load_tags_csv(tags_csv_path: str) -> Tuple[List[str], List[int]]:
+def load_tags_csv(tags_csv_path: str) -> tuple[list[str], list[int]]:
     """读取 selected_tags.csv，获取标签名称列表及类别 (category)。"""
-    tag_names: List[str] = []
-    tag_categories: List[int] = []
+    tag_names: list[str] = []
+    tag_categories: list[int] = []
 
     with open(tags_csv_path, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
@@ -456,20 +444,99 @@ def sigmoid(x: np.ndarray) -> np.ndarray:
     return 1.0 / (1.0 + np.exp(-x))
 
 
+def create_inference_session(
+    model_path: str, device: str = "auto"
+) -> tuple[ort.InferenceSession, str]:
+    """
+    创建 ONNX Runtime 会话，严格贯彻 GPU 优先策略：
+    - auto: 依次尝试 CUDA -> TensorRT -> DirectML -> CPU
+    - cuda: 优先 CUDA
+    - dml:  优先 DirectML (基于 DirectX 12，Windows 原生硬件加速，免安装 CUDA Toolkit)
+    - cpu:  使用 CPU
+
+    返回: (session, active_provider_name)
+    """
+    available_providers = ort.get_available_providers()
+
+    gpu_provider_candidates: list[tuple[str, dict[str, Any]]] = [
+        (
+            "CUDAExecutionProvider",
+            {
+                "device_id": 0,
+                "arena_extend_strategy": "kNextPowerOfTwo",
+                "cudnn_conv_algo_search": "DEFAULT",
+                "do_copy_in_default_stream": True,
+            },
+        ),
+        (
+            "TensorrtExecutionProvider",
+            {
+                "device_id": 0,
+            },
+        ),
+        (
+            "DmlExecutionProvider",
+            {
+                "device_id": 0,
+            },
+        ),
+    ]
+
+    # 根据指定的 device 过滤候选列表
+    targets: list[tuple[str, dict[str, Any]]] = []
+    if device == "cuda":
+        targets = [
+            c for c in gpu_provider_candidates if c[0] == "CUDAExecutionProvider"
+        ]
+    elif device == "dml":
+        targets = [c for c in gpu_provider_candidates if c[0] == "DmlExecutionProvider"]
+    elif device == "cpu":
+        targets = []
+    else:  # "auto"
+        targets = gpu_provider_candidates
+
+    sess_options = ort.SessionOptions()
+    sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+
+    # 1. 尝试 GPU 执行器
+    for provider_name, provider_opts in targets:
+        if provider_name in available_providers:
+            try:
+                # 仅传入单个 GPU provider + CPU 兜底
+                sess = ort.InferenceSession(
+                    model_path,
+                    sess_options=sess_options,
+                    providers=[(provider_name, provider_opts), "CPUExecutionProvider"],
+                )
+                active = sess.get_providers()
+                if active and active[0] == provider_name:
+                    return sess, provider_name
+            except Exception:
+                pass
+
+    # 2. 回退到 CPU
+    sess = ort.InferenceSession(
+        model_path,
+        sess_options=sess_options,
+        providers=["CPUExecutionProvider"],
+    )
+    return sess, "CPUExecutionProvider"
+
+
 # ==============================================================================
 # 3. 标签清洗、过滤、翻译流水线 (纯 CPU 毫秒级)
 # ==============================================================================
 
 
 def filter_tags(
-    raw_dict: Dict[str, float],
-    translations: Dict[str, str],
-) -> List[str]:
+    raw_dict: dict[str, float],
+    translations: dict[str, str],
+) -> list[str]:
     """
     根据阈值、黑名单、翻译映射与同义词，将 raw 原始分数字典转换为最终的中文 tags 数组。
     """
-    char_candidates: List[Tuple[str, float]] = []
-    general_candidates: List[Tuple[str, float]] = []
+    char_candidates: list[tuple[str, float]] = []
+    general_candidates: list[tuple[str, float]] = []
 
     for raw_tag, score in raw_dict.items():
         is_char = raw_tag.startswith("char:")
@@ -509,8 +576,8 @@ def filter_tags(
     general_candidates.sort(key=lambda x: x[1], reverse=True)
 
     # 角色词优先排在最前，合并去重
-    seen: Set[str] = set()
-    result: List[str] = []
+    seen: set[str] = set()
+    result: list[str] = []
 
     for name, _ in char_candidates + general_candidates:
         if name not in seen:
@@ -536,6 +603,18 @@ def main():
         "--filter", action="store_true", help="仅重算过滤规则与翻译 (不调用 AI 模型)"
     )
     parser.add_argument(
+        "--device",
+        choices=["auto", "cuda", "dml", "cpu"],
+        default="auto",
+        help="指定推理设备 (auto: 优先 GPU/CUDA/DirectML, 自动回退 CPU)",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=0,
+        help="推理 Batch 大小 (默认: 0 自动选择，GPU 为 4，CPU 为 1)",
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -556,7 +635,7 @@ def main():
     translations = load_translations(project_dir, translations_cache_dir)
 
     # 1. 加载既有的 tags.json 缓存
-    cached_data: Dict[str, Any] = {"meta": {}, "files": {}}
+    cached_data: dict[str, Any] = {"meta": {}, "files": {}}
     if tags_file.exists():
         try:
             with open(tags_file, "r", encoding="utf-8") as f:
@@ -568,7 +647,7 @@ def main():
         print(f"[*] 标签缓存文件尚未生成: {tags_file.resolve()}")
 
     prev_meta = cached_data.get("meta", {})
-    files_cache: Dict[str, Dict[str, Any]] = cached_data.get("files", {})
+    files_cache: dict[str, dict[str, Any]] = cached_data.get("files", {})
 
     # 检查缓存是否整体失效 (模型变动 或 底线阈值下调)
     prev_model = prev_meta.get("model")
@@ -593,7 +672,7 @@ def main():
 
     # 2. 扫描 assets 目录下的所有图片
     print(f"[*] 扫描目录: {assets_dir.resolve()}")
-    disk_images: Dict[str, Tuple[Path, int, int]] = {}
+    disk_images: dict[str, tuple[Path, int, int]] = {}
     for p in assets_dir.rglob("*"):
         if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS:
             rel_path = p.relative_to(assets_dir).as_posix()
@@ -601,8 +680,8 @@ def main():
             disk_images[rel_path] = (p, stat.st_size, int(stat.st_mtime))
 
     # 3. 统计需要 AI 推理的文件与缓存命中文件
-    cached_items: List[Tuple[str, Path]] = []
-    to_infer: List[Tuple[str, Path, int, int]] = []
+    cached_items: list[tuple[str, Path]] = []
+    to_infer: list[tuple[str, Path, int, int]] = []
     for rel_path, (full_path, size, mtime) in disk_images.items():
         if args.filter:
             cached_items.append((rel_path, full_path))
@@ -638,12 +717,34 @@ def main():
         model_path, tags_path = get_model_and_tags(cache_dir)
         tag_names, tag_categories = load_tags_csv(tags_path)
 
-        # 启动 ONNX Runtime
-        providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
-        available_providers = ort.get_available_providers()
-        active_providers = [p for p in providers if p in available_providers]
-        print(f"[*] 启动 ONNX Runtime 推理会话 (执行器: {active_providers})...")
-        session = ort.InferenceSession(model_path, providers=active_providers)
+        # 启动 ONNX Runtime (GPU 优先策略)
+        print(f"[*] 启动 ONNX Runtime 推理会话 (请求模式: {args.device})...")
+        session, active_provider = create_inference_session(
+            model_path, device=args.device
+        )
+        is_gpu = active_provider in (
+            "CUDAExecutionProvider",
+            "TensorrtExecutionProvider",
+            "DmlExecutionProvider",
+        )
+
+        if is_gpu:
+            print(f"[√] 成功启用 GPU 加速执行器: {active_provider}")
+        else:
+            print(f"[*] 当前使用执行器: {active_provider}")
+            if args.device != "cpu":
+                print("    [提示] GPU 执行环境未能载入。若您使用的是 NVIDIA 显卡:")
+                print(
+                    "           - 方案1 (推荐，免配直接跑 GPU): 运行 `uv pip install onnxruntime-directml`"
+                )
+                print(
+                    "           - 方案2 (CUDA 原生加速): 安装 NVIDIA CUDA 13.x Toolkit 与 cuDNN 9.x 并配置 PATH"
+                )
+
+        batch_size = args.batch_size
+        if batch_size <= 0:
+            batch_size = 4 if is_gpu else 1
+        print(f"[*] 推理批次大小 (Batch Size): {batch_size}")
 
         input_node = session.get_inputs()[0]
         output_name = session.get_outputs()[0].name
@@ -655,46 +756,117 @@ def main():
             target_size = 448
 
         print(
-            f"[*] 开始批量打标 (输入尺寸: {target_size}x{target_size}, NCHW={is_nchw})..."
+            f"[*] 开始打标流程 (输入尺寸: {target_size}x{target_size}, NCHW={is_nchw}, 硬件: {active_provider})..."
         )
-        for rel_path, full_path, size, mtime in tqdm(
-            to_infer, desc="AI 打标中", unit="图"
-        ):
-            try:
-                img_tensor = preprocess_image(full_path, target_size, is_nchw)
-                logits = session.run([output_name], {input_node.name: img_tensor})[0]
-                probs = sigmoid(logits[0])
 
-                # 提取 >= BASE_THRESHOLD 的标签
-                raw_candidates: List[Tuple[str, float]] = []
-                for idx, prob in enumerate(probs):
-                    if prob >= BASE_THRESHOLD:
-                        category = tag_categories[idx]
-                        # category 9 为 rating 分级，不作为视觉标签
-                        if category == 9:
-                            continue
-                        tag_name = tag_names[idx]
-                        tag_key = f"char:{tag_name}" if category == 4 else tag_name
-                        raw_candidates.append((tag_key, round(float(prob), 3)))
+        with tqdm(
+            total=len(to_infer),
+            desc=f"AI 打标中 ({active_provider})",
+            unit="图",
+        ) as pbar:
+            for i in range(0, len(to_infer), batch_size):
+                chunk = to_infer[i : i + batch_size]
+                batch_tensors: list[np.ndarray] = []
+                valid_items: list[tuple[str, Path, int, int]] = []
 
-                # 仅保留最高分的前 MAX_RAW_TAGS_PER_IMAGE 项
-                raw_candidates.sort(key=lambda x: x[1], reverse=True)
-                raw_dict = dict(raw_candidates[:MAX_RAW_TAGS_PER_IMAGE])
+                for rel_path, full_path, size, mtime in chunk:
+                    try:
+                        tensor = preprocess_image(full_path, target_size, is_nchw)
+                        batch_tensors.append(tensor)
+                        valid_items.append((rel_path, full_path, size, mtime))
+                    except Exception as e:
+                        print(f"\n[警告] 图片预处理失败 {full_path.resolve()}: {e}")
+                        files_cache[rel_path] = {
+                            "size": size,
+                            "mtime": mtime,
+                            "raw": {},
+                            "tags": [],
+                        }
+                        pbar.update(1)
 
-                files_cache[rel_path] = {
-                    "size": size,
-                    "mtime": mtime,
-                    "raw": raw_dict,
-                    "tags": [],  # 下一步统一计算
-                }
-            except Exception as e:
-                print(f"\n[警告] 图片处理失败 {full_path.resolve()}: {e}")
-                files_cache[rel_path] = {
-                    "size": size,
-                    "mtime": mtime,
-                    "raw": {},
-                    "tags": [],
-                }
+                if not batch_tensors:
+                    continue
+
+                try:
+                    batched_input = (
+                        np.concatenate(batch_tensors, axis=0)
+                        if len(batch_tensors) > 1
+                        else batch_tensors[0]
+                    )
+                    logits = session.run(
+                        [output_name], {input_node.name: batched_input}
+                    )[0]
+
+                    for idx_in_batch, (rel_path, full_path, size, mtime) in enumerate(
+                        valid_items
+                    ):
+                        probs = sigmoid(logits[idx_in_batch])
+
+                        raw_candidates: list[tuple[str, float]] = []
+                        for idx, prob in enumerate(probs):
+                            if prob >= BASE_THRESHOLD:
+                                category = tag_categories[idx]
+                                if category == 9:
+                                    continue
+                                tag_name = tag_names[idx]
+                                tag_key = (
+                                    f"char:{tag_name}" if category == 4 else tag_name
+                                )
+                                raw_candidates.append((tag_key, round(float(prob), 3)))
+
+                        raw_candidates.sort(key=lambda x: x[1], reverse=True)
+                        raw_dict = dict(raw_candidates[:MAX_RAW_TAGS_PER_IMAGE])
+
+                        files_cache[rel_path] = {
+                            "size": size,
+                            "mtime": mtime,
+                            "raw": raw_dict,
+                            "tags": [],
+                        }
+                        pbar.update(1)
+                except Exception as e:
+                    print(f"\n[警告] 批次推理异常，自动降级为单图模式: {e}")
+                    for t, (rel_path, full_path, size, mtime) in zip(
+                        batch_tensors, valid_items
+                    ):
+                        try:
+                            l = session.run([output_name], {input_node.name: t})[0]
+                            probs = sigmoid(l[0])
+                            raw_candidates = []
+                            for idx, prob in enumerate(probs):
+                                if prob >= BASE_THRESHOLD:
+                                    category = tag_categories[idx]
+                                    if category == 9:
+                                        continue
+                                    tag_name = tag_names[idx]
+                                    tag_key = (
+                                        f"char:{tag_name}"
+                                        if category == 4
+                                        else tag_name
+                                    )
+                                    raw_candidates.append(
+                                        (tag_key, round(float(prob), 3))
+                                    )
+                            raw_candidates.sort(key=lambda x: x[1], reverse=True)
+                            raw_dict = dict(raw_candidates[:MAX_RAW_TAGS_PER_IMAGE])
+                            files_cache[rel_path] = {
+                                "size": size,
+                                "mtime": mtime,
+                                "raw": raw_dict,
+                                "tags": [],
+                            }
+                        except Exception as sub_e:
+                            print(
+                                f"\n[错误] 图片处理失败 {full_path.resolve()}: {sub_e}"
+                            )
+                            files_cache[rel_path] = {
+                                "size": size,
+                                "mtime": mtime,
+                                "raw": {},
+                                "tags": [],
+                            }
+                        finally:
+                            pbar.update(1)
     else:
         if args.filter:
             print("[*] 处于 --filter 模式，跳过 AI 模型推理，仅应用最新规则。")
@@ -703,7 +875,7 @@ def main():
 
     # 5. 清理磁盘上已删除的图片缓存，并统一步长重算 tags
     print("[*] 应用黑名单/同义词规则生成最终 tags 数组...")
-    updated_files: Dict[str, Dict[str, Any]] = {}
+    updated_files: dict[str, dict[str, Any]] = {}
     for rel_path, (full_path, size, mtime) in disk_images.items():
         entry = files_cache.get(rel_path)
         if not entry:
