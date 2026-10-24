@@ -604,6 +604,7 @@ def build_parser(
     parser.add_argument(
         "--dir",
         "-d",
+        "--home",
         type=Path,
         default=None,
         help="项目根目录路径 (默认: 当前工作目录)",
@@ -637,7 +638,9 @@ def build_parser(
 
 def run(args: argparse.Namespace) -> None:
     """执行 WD14 Tagger 打标主流程。"""
-    project_dir = (args.dir if getattr(args, "dir", None) else Path.cwd()).resolve()
+    project_dir = (
+        (getattr(args, "home", None) or getattr(args, "dir", None)) or Path.cwd()
+    ).resolve()
     assets_dir = project_dir / "assets"
     tags_file = project_dir / "tags.json"
     cache_dir = project_dir / ".cache" / "huggingface"

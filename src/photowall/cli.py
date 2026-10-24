@@ -6,7 +6,7 @@ import argparse
 import sys
 from collections.abc import Sequence
 
-from photowall import assets, tags
+from photowall import assets, index, tags
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -21,6 +21,13 @@ def build_parser() -> argparse.ArgumentParser:
         description="可用子命令",
         metavar="<command>",
     )
+
+    parser_index = subparsers.add_parser(
+        "index",
+        help="全量索引相册：生成 tags.json、assets.js 并输出 index.html",
+        description="从指定的 --home 中查找 assets 目录，并输出 .cache、tags.json、assets.js 与 index.html",
+    )
+    index.build_parser(parser_index)
 
     parser_assets = subparsers.add_parser(
         "assets",
@@ -48,7 +55,9 @@ def main(argv: Sequence[str] | None = None) -> None:
         parser.print_help()
         sys.exit(0)
 
-    if args.command == "assets":
+    if args.command == "index":
+        index.run(args)
+    elif args.command == "assets":
         assets.run(args)
     elif args.command == "tags":
         tags.run(args)

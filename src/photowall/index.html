@@ -1855,10 +1855,10 @@
         <div class="step-item">
           <div class="step-badge">2</div>
           <div class="step-content">
-            <div class="step-title">生成 AI 标签索引 (可选但推荐)</div>
+            <div class="step-title">一键全量生成相册索引</div>
             <div class="step-code-row">
-              <code class="step-code">uv run tags.py</code>
-              <button class="btn-copy" onclick="copyToClipboard('uv run tags.py', this)"><span class="copy-icon"></span>
+              <code class="step-code">uv run photowall index</code>
+              <button class="btn-copy" onclick="copyToClipboard('uv run photowall index', this)"><span class="copy-icon"></span>
                 复制</button>
             </div>
           </div>
@@ -1866,22 +1866,11 @@
         <div class="step-item">
           <div class="step-badge">3</div>
           <div class="step-content">
-            <div class="step-title">扫描并生成相册元数据</div>
+            <div class="step-title">可选：跳过 AI 打标快速更新</div>
             <div class="step-code-row">
-              <code class="step-code">uv run assets.py</code>
-              <button class="btn-copy" onclick="copyToClipboard('uv run assets.py', this)"><span
+              <code class="step-code">uv run photowall index --skip-tags</code>
+              <button class="btn-copy" onclick="copyToClipboard('uv run photowall index --skip-tags', this)"><span
                   class="copy-icon"></span> 复制</button>
-            </div>
-          </div>
-        </div>
-        <div class="step-item">
-          <div class="step-badge">4</div>
-          <div class="step-content">
-            <div class="step-title">或者直接运行一键初始化脚本</div>
-            <div class="step-code-row">
-              <code class="step-code">init.bat</code>
-              <button class="btn-copy" onclick="copyToClipboard('init.bat', this)"><span class="copy-icon"></span>
-                复制</button>
             </div>
           </div>
         </div>

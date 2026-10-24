@@ -240,6 +240,7 @@ def build_parser(
     parser.add_argument(
         "--dir",
         "-d",
+        "--home",
         type=Path,
         default=None,
         help="项目根目录路径 (默认: 当前工作目录)",
@@ -247,8 +248,8 @@ def build_parser(
     parser.add_argument(
         "--title",
         type=str,
-        default="PhotoWall",
-        help="相册标题 (写入 meta.title，默认 'PhotoWall')",
+        default=None,
+        help="相册标题 (写入 meta.title，默认从 --home 目录名称提取)",
     )
     parser.add_argument(
         "--force",
@@ -260,7 +261,10 @@ def build_parser(
 
 def run(args: argparse.Namespace) -> None:
     """执行 assets.js 生成主流程。"""
-    project_dir = (args.dir if getattr(args, "dir", None) else Path.cwd()).resolve()
+    project_dir = (
+        (getattr(args, "home", None) or getattr(args, "dir", None)) or Path.cwd()
+    ).resolve()
+    album_title = getattr(args, "title", None) or project_dir.name or "PhotoWall"
     assets_dir = project_dir / "assets"
     tags_file = project_dir / "tags.json"
     output_file = project_dir / "assets.js"
@@ -582,7 +586,7 @@ def run(args: argparse.Namespace) -> None:
     now_iso = datetime.now(UTC).astimezone().isoformat()
     wall_data = {
         "meta": {
-            "title": args.title,
+            "title": album_title,
             "generatedAt": now_iso,
             "basePath": "assets",
             "totalCount": len(items),
@@ -612,7 +616,7 @@ def run(args: argparse.Namespace) -> None:
     print("\n" + "=" * 60)
     print("[√] assets.js 生成成功！")
     print(f"    - 文件路径: {output_file.resolve()}")
-    print(f"    - 相册标题: {args.title}")
+    print(f"    - 相册标题: {album_title}")
     print(f"    - 媒体总数: {len(items)} (图片: {image_count}, 视频: {video_count})")
     print(f"    - 目录数量: {len(folders)}")
     print(f"    - 唯一标签: {len(sorted_tags)}")
