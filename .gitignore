@@ -3,6 +3,8 @@ assets.js
 tags.json
 .cache/
 __pycache__/
+.pytest_cache/
+.ruff_cache/
 .venv/
 test*.py
 !/tests/*

@@ -23,7 +23,7 @@ import os
 import re
 import sys
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -564,7 +564,7 @@ def main():
     ]
 
     # 7. 组装最终 PHOTO_WALL_DATA 结构
-    now_iso = datetime.now(timezone.utc).astimezone().isoformat()
+    now_iso = datetime.now(UTC).astimezone().isoformat()
     wall_data = {
         "meta": {
             "title": args.title,
@@ -595,7 +595,7 @@ def main():
     temp_output_file.replace(output_file)
 
     print("\n" + "=" * 60)
-    print(f"[√] assets.js 生成成功！")
+    print("[√] assets.js 生成成功！")
     print(f"    - 文件路径: {output_file.resolve()}")
     print(f"    - 相册标题: {args.title}")
     print(f"    - 媒体总数: {len(items)} (图片: {image_count}, 视频: {video_count})")

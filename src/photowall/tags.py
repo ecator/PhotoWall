@@ -16,7 +16,7 @@ import argparse
 import csv
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -421,7 +421,7 @@ def preprocess_image(image_path: Path, target_size: int, is_nchw: bool) -> np.nd
         # 保持比例缩放长边到 target_size
         w, h = img_rgb.size
         scale = target_size / max(w, h)
-        nw, nh = max(1, int(round(w * scale))), max(1, int(round(h * scale)))
+        nw, nh = max(1, round(w * scale)), max(1, round(h * scale))
         img_resized = img_rgb.resize((nw, nh), Image.Resampling.BICUBIC)
 
         # 居中粘贴到 448x448 白色画布
@@ -901,7 +901,7 @@ def main():
     result_data = {
         "meta": {
             "model": MODEL_REPO,
-            "generatedAt": datetime.now(timezone.utc).astimezone().isoformat(),
+            "generatedAt": datetime.now(UTC).astimezone().isoformat(),
             "baseThreshold": BASE_THRESHOLD,
             "generalThreshold": GENERAL_THRESHOLD,
             "characterThreshold": CHARACTER_THRESHOLD,
