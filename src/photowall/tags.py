@@ -46,6 +46,7 @@ MAX_TAGS_PER_IMAGE = 6  # 单张图片最终保留的最大标签数量 (照片�
 MAX_RAW_TAGS_PER_IMAGE = (
     10  # 单张图片 raw 缓存最多保留的条目数 (双重防线，防止单图臃肿)
 )
+DEFAULT_CHECKPOINT_INTERVAL = 100  # 默认每处理 100 张图片保存一个断点缓存 JSON
 
 # 全局黑名单 (中英文均可匹配，命中的标签不会出现在 tags 中)
 BLACKLIST: set[str] = {
@@ -591,7 +592,74 @@ def filter_tags(
 
 
 # ==============================================================================
-# 4. 主流程逻辑
+# 4. 临时断点缓存管理 (.cache/tags/*.json)
+# ==============================================================================
+
+
+def get_checkpoint_dir(project_dir: Path) -> Path:
+    """获取断点缓存目录 (.cache/tags)。"""
+    return project_dir / ".cache" / "tags"
+
+
+def load_checkpoints(checkpoint_dir: Path) -> dict[str, dict[str, Any]]:
+    """
+    扫描并加载 .cache/tags 目录下的所有临时 checkpoint JSON 文件。
+    返回合并后的图片元数据字典。
+    """
+    merged: dict[str, dict[str, Any]] = {}
+    if not checkpoint_dir.is_dir():
+        return merged
+
+    json_files = sorted(checkpoint_dir.glob("*.json"))
+    for jf in json_files:
+        try:
+            with open(jf, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    merged.update(data)
+        except Exception as e:
+            print(f"[警告] 读取断点缓存文件 {jf.name} 失败: {e}")
+    return merged
+
+
+def save_checkpoint(
+    checkpoint_dir: Path,
+    chunk_data: dict[str, dict[str, Any]],
+    chunk_id: str,
+) -> Path | None:
+    """原子化写入单个断点缓存 JSON 文件。"""
+    if not chunk_data:
+        return None
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    target_file = checkpoint_dir / f"checkpoint_{chunk_id}.json"
+    temp_file = checkpoint_dir / f"checkpoint_{chunk_id}.json.tmp"
+    try:
+        with open(temp_file, "w", encoding="utf-8") as f:
+            json.dump(chunk_data, f, ensure_ascii=False, indent=2)
+        temp_file.replace(target_file)
+        return target_file
+    except Exception as e:
+        print(f"\n[警告] 保存断点缓存失败 ({target_file.name}): {e}")
+        return None
+
+
+def clear_checkpoints(checkpoint_dir: Path) -> int:
+    """清空断点缓存目录下的所有临时 JSON 及 TMP 文件。"""
+    if not checkpoint_dir.is_dir():
+        return 0
+    count = 0
+    for f in checkpoint_dir.iterdir():
+        if f.is_file() and (f.suffix == ".json" or f.name.endswith(".tmp")):
+            try:
+                f.unlink()
+                count += 1
+            except Exception as e:
+                print(f"[警告] 清理断点临时文件 {f.name} 失败: {e}")
+    return count
+
+
+# ==============================================================================
+# 5. 主流程逻辑
 # ==============================================================================
 
 
@@ -628,6 +696,12 @@ def build_parser(
         help="推理 Batch 大小 (默认: 0 自动选择，GPU 为 4，CPU 为 1)",
     )
     parser.add_argument(
+        "--checkpoint-interval",
+        type=int,
+        default=DEFAULT_CHECKPOINT_INTERVAL,
+        help=f"断点续传缓存步长 (默认: 每 {DEFAULT_CHECKPOINT_INTERVAL} 张图片保存一个 checkpoint)",
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -644,6 +718,12 @@ def run(args: argparse.Namespace) -> None:
     assets_dir = project_dir / "assets"
     tags_file = project_dir / "tags.json"
     cache_dir = project_dir / ".cache" / "huggingface"
+    checkpoint_dir = get_checkpoint_dir(project_dir)
+    checkpoint_interval = getattr(
+        args, "checkpoint_interval", DEFAULT_CHECKPOINT_INTERVAL
+    )
+    if checkpoint_interval <= 0:
+        checkpoint_interval = DEFAULT_CHECKPOINT_INTERVAL
 
     if not assets_dir.is_dir():
         print(f"[错误] 未找到 assets 目录: {assets_dir.resolve()}")
@@ -669,24 +749,35 @@ def run(args: argparse.Namespace) -> None:
 
     # 检查缓存是否整体失效 (模型变动 或 底线阈值下调)
     prev_model = prev_meta.get("model")
-    prev_base = prev_meta.get("baseThreshold", 1.0)
+    prev_base = prev_meta.get("baseThreshold")
     need_full_rebuild = args.force
 
     if not need_full_rebuild and prev_model and prev_model != MODEL_REPO:
         print(f"[*] 检测到模型已更换 ({prev_model} -> {MODEL_REPO})，需重新推理！")
         need_full_rebuild = True
-    elif not need_full_rebuild and prev_base and BASE_THRESHOLD < prev_base:
+    elif not need_full_rebuild and prev_base is not None and BASE_THRESHOLD < prev_base:
         print(
             f"[*] 底线阈值下调 ({prev_base} -> {BASE_THRESHOLD})，旧 raw 数据不足，需重新推理！"
         )
         need_full_rebuild = True
-    elif prev_base and BASE_THRESHOLD > prev_base:
+    elif prev_base is not None and BASE_THRESHOLD > prev_base:
         print(
             f"[*] 检测到底线阈值上调 ({prev_base} -> {BASE_THRESHOLD})，将自动裁剪 raw 中低分标签为文件瘦身..."
         )
 
     if need_full_rebuild:
         files_cache.clear()
+        cleaned = clear_checkpoints(checkpoint_dir)
+        if cleaned > 0:
+            print(f"[*] 强制重建模式，已清空历史断点缓存 ({cleaned} 个分块文件)")
+    else:
+        # 加载断点缓存 (.cache/tags/*.json)
+        checkpoint_data = load_checkpoints(checkpoint_dir)
+        if checkpoint_data:
+            print(
+                f"[*] 从断点缓存 ({checkpoint_dir.resolve()}) 恢复了 {len(checkpoint_data)} 张图片的临时打标数据"
+            )
+            files_cache.update(checkpoint_data)
 
     # 2. 扫描 assets 目录下的所有图片
     print(f"[*] 扫描目录: {assets_dir.resolve()}")
@@ -777,80 +868,75 @@ def run(args: argparse.Namespace) -> None:
             f"[*] 开始打标流程 (输入尺寸: {target_size}x{target_size}, NCHW={is_nchw}, 硬件: {active_provider})..."
         )
 
-        with tqdm(
-            total=len(to_infer),
-            desc=f"AI 打标中 ({active_provider})",
-            unit="图",
-        ) as pbar:
-            for i in range(0, len(to_infer), batch_size):
-                chunk = to_infer[i : i + batch_size]
-                batch_tensors: list[np.ndarray] = []
-                valid_items: list[tuple[str, Path, int, int]] = []
+        checkpoint_buffer: dict[str, dict[str, Any]] = {}
+        checkpoint_counter = 0
 
-                for rel_path, full_path, size, mtime in chunk:
-                    try:
-                        tensor = preprocess_image(full_path, target_size, is_nchw)
-                        batch_tensors.append(tensor)
-                        valid_items.append((rel_path, full_path, size, mtime))
-                    except Exception as e:
-                        print(f"\n[警告] 图片预处理失败 {full_path.resolve()}: {e}")
-                        files_cache[rel_path] = {
-                            "size": size,
-                            "mtime": mtime,
-                            "raw": {},
-                            "tags": [],
-                        }
-                        pbar.update(1)
+        def flush_checkpoint(counter: int) -> None:
+            nonlocal checkpoint_buffer
+            if not checkpoint_buffer:
+                return
+            ts = int(datetime.now().timestamp())
+            cid = f"{ts}_{counter:04d}"
+            save_checkpoint(checkpoint_dir, checkpoint_buffer, cid)
+            checkpoint_buffer = {}
 
-                if not batch_tensors:
-                    continue
+        def record_result(rel_path: str, item_data: dict[str, Any]) -> None:
+            nonlocal checkpoint_counter
+            files_cache[rel_path] = item_data
+            checkpoint_buffer[rel_path] = item_data
+            if len(checkpoint_buffer) >= checkpoint_interval:
+                checkpoint_counter += 1
+                flush_checkpoint(checkpoint_counter)
 
-                try:
-                    batched_input = (
-                        np.concatenate(batch_tensors, axis=0)
-                        if len(batch_tensors) > 1
-                        else batch_tensors[0]
-                    )
-                    logits = session.run(
-                        [output_name], {input_node.name: batched_input}
-                    )[0]
+        try:
+            with tqdm(
+                total=len(to_infer),
+                desc=f"AI 打标中 ({active_provider})",
+                unit="图",
+            ) as pbar:
+                for i in range(0, len(to_infer), batch_size):
+                    chunk = to_infer[i : i + batch_size]
+                    batch_tensors: list[np.ndarray] = []
+                    valid_items: list[tuple[str, Path, int, int]] = []
 
-                    for idx_in_batch, (rel_path, full_path, size, mtime) in enumerate(
-                        valid_items
-                    ):
-                        probs = sigmoid(logits[idx_in_batch])
-
-                        raw_candidates: list[tuple[str, float]] = []
-                        for idx, prob in enumerate(probs):
-                            if prob >= BASE_THRESHOLD:
-                                category = tag_categories[idx]
-                                if category == 9:
-                                    continue
-                                tag_name = tag_names[idx]
-                                tag_key = (
-                                    f"char:{tag_name}" if category == 4 else tag_name
-                                )
-                                raw_candidates.append((tag_key, round(float(prob), 3)))
-
-                        raw_candidates.sort(key=lambda x: x[1], reverse=True)
-                        raw_dict = dict(raw_candidates[:MAX_RAW_TAGS_PER_IMAGE])
-
-                        files_cache[rel_path] = {
-                            "size": size,
-                            "mtime": mtime,
-                            "raw": raw_dict,
-                            "tags": [],
-                        }
-                        pbar.update(1)
-                except Exception as e:
-                    print(f"\n[警告] 批次推理异常，自动降级为单图模式: {e}")
-                    for t, (rel_path, full_path, size, mtime) in zip(
-                        batch_tensors, valid_items
-                    ):
+                    for rel_path, full_path, size, mtime in chunk:
                         try:
-                            l = session.run([output_name], {input_node.name: t})[0]
-                            probs = sigmoid(l[0])
-                            raw_candidates = []
+                            tensor = preprocess_image(full_path, target_size, is_nchw)
+                            batch_tensors.append(tensor)
+                            valid_items.append((rel_path, full_path, size, mtime))
+                        except Exception as e:
+                            print(f"\n[警告] 图片预处理失败 {full_path.resolve()}: {e}")
+                            item_data = {
+                                "size": size,
+                                "mtime": mtime,
+                                "raw": {},
+                                "tags": [],
+                            }
+                            record_result(rel_path, item_data)
+                            pbar.update(1)
+
+                    if not batch_tensors:
+                        continue
+
+                    try:
+                        batched_input = (
+                            np.concatenate(batch_tensors, axis=0)
+                            if len(batch_tensors) > 1
+                            else batch_tensors[0]
+                        )
+                        logits = session.run(
+                            [output_name], {input_node.name: batched_input}
+                        )[0]
+
+                        for idx_in_batch, (
+                            rel_path,
+                            full_path,
+                            size,
+                            mtime,
+                        ) in enumerate(valid_items):
+                            probs = sigmoid(logits[idx_in_batch])
+
+                            raw_candidates: list[tuple[str, float]] = []
                             for idx, prob in enumerate(probs):
                                 if prob >= BASE_THRESHOLD:
                                     category = tag_categories[idx]
@@ -865,26 +951,79 @@ def run(args: argparse.Namespace) -> None:
                                     raw_candidates.append(
                                         (tag_key, round(float(prob), 3))
                                     )
+
                             raw_candidates.sort(key=lambda x: x[1], reverse=True)
                             raw_dict = dict(raw_candidates[:MAX_RAW_TAGS_PER_IMAGE])
-                            files_cache[rel_path] = {
+
+                            item_data = {
                                 "size": size,
                                 "mtime": mtime,
                                 "raw": raw_dict,
                                 "tags": [],
                             }
-                        except Exception as sub_e:
-                            print(
-                                f"\n[错误] 图片处理失败 {full_path.resolve()}: {sub_e}"
-                            )
-                            files_cache[rel_path] = {
-                                "size": size,
-                                "mtime": mtime,
-                                "raw": {},
-                                "tags": [],
-                            }
-                        finally:
+                            record_result(rel_path, item_data)
                             pbar.update(1)
+                    except Exception as e:
+                        print(f"\n[警告] 批次推理异常，自动降级为单图模式: {e}")
+                        for t, (rel_path, full_path, size, mtime) in zip(
+                            batch_tensors, valid_items
+                        ):
+                            try:
+                                l = session.run([output_name], {input_node.name: t})[0]
+                                probs = sigmoid(l[0])
+                                raw_candidates = []
+                                for idx, prob in enumerate(probs):
+                                    if prob >= BASE_THRESHOLD:
+                                        category = tag_categories[idx]
+                                        if category == 9:
+                                            continue
+                                        tag_name = tag_names[idx]
+                                        tag_key = (
+                                            f"char:{tag_name}"
+                                            if category == 4
+                                            else tag_name
+                                        )
+                                        raw_candidates.append(
+                                            (tag_key, round(float(prob), 3))
+                                        )
+                                raw_candidates.sort(key=lambda x: x[1], reverse=True)
+                                raw_dict = dict(raw_candidates[:MAX_RAW_TAGS_PER_IMAGE])
+                                item_data = {
+                                    "size": size,
+                                    "mtime": mtime,
+                                    "raw": raw_dict,
+                                    "tags": [],
+                                }
+                                record_result(rel_path, item_data)
+                            except Exception as sub_e:
+                                print(
+                                    f"\n[错误] 图片处理失败 {full_path.resolve()}: {sub_e}"
+                                )
+                                item_data = {
+                                    "size": size,
+                                    "mtime": mtime,
+                                    "raw": {},
+                                    "tags": [],
+                                }
+                                record_result(rel_path, item_data)
+                            finally:
+                                pbar.update(1)
+
+            # 正常推理完成：将未满分块的剩余数据存盘
+            if checkpoint_buffer:
+                checkpoint_counter += 1
+                flush_checkpoint(checkpoint_counter)
+
+        except KeyboardInterrupt:
+            print("\n[!] 检测到用户中断操作 (Ctrl+C)。")
+            if checkpoint_buffer:
+                checkpoint_counter += 1
+                flush_checkpoint(checkpoint_counter)
+                print(
+                    f"[*] 已将未满分块的临时进度 ({len(checkpoint_buffer)} 张图片) 保存至断点缓存: {checkpoint_dir.resolve()}"
+                )
+            print("[*] 下次启动打标时将自动从断点继续。")
+            sys.exit(130)
     else:
         if args.filter:
             print("[*] 处于 --filter 模式，跳过 AI 模型推理，仅应用最新规则。")
@@ -937,6 +1076,13 @@ def run(args: argparse.Namespace) -> None:
     print(
         f"[√] 标签缓存已写入: {tags_file.resolve()} (共计索引 {len(updated_files)} 张图片)"
     )
+
+    # 7. 清理临时断点缓存
+    cleaned_count = clear_checkpoints(checkpoint_dir)
+    if cleaned_count > 0:
+        print(
+            f"[*] 标签生成完毕，已清理 {cleaned_count} 个断点分块缓存文件: {checkpoint_dir.resolve()}"
+        )
 
 
 def main(argv: Sequence[str] | None = None) -> None:

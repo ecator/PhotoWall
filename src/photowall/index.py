@@ -126,6 +126,12 @@ def build_parser(
         help="AI 打标推理 Batch 大小 (默认: 0 自动选择)",
     )
     parser.add_argument(
+        "--checkpoint-interval",
+        type=int,
+        default=100,
+        help="AI 打标断点续传缓存步长 (默认: 每 100 张图片保存一个 checkpoint)",
+    )
+    parser.add_argument(
         "--skip-tags",
         action="store_true",
         help="跳过 AI 标签生成步骤 (仅更新 assets.js 与 index.html)",
@@ -167,6 +173,7 @@ def run(args: argparse.Namespace) -> None:
             device=getattr(args, "device", "auto"),
             batch_size=getattr(args, "batch_size", 0),
             verbose=getattr(args, "verbose", False),
+            checkpoint_interval=getattr(args, "checkpoint_interval", 100),
         )
         tags.run(tags_args)
     else:
