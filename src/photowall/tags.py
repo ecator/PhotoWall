@@ -2,9 +2,9 @@
 tags.py - 照片墙 WD14 Tagger 自动增量打标脚本
 
 使用方法:
-    uv run tags.py            # 增量扫描 assets/ 并生成/更新 tags.json
-    uv run tags.py --force    # 忽略缓存，强制重新对所有图片进行 AI 推理
-    uv run tags.py --filter   # 不调用 AI 模型，仅根据最新的黑名单/同义词/阈值重算 tags
+    uv run photowall tags            # 增量扫描 assets/ 并生成/更新 tags.json
+    uv run photowall tags --force    # 忽略缓存，强制重新对所有图片进行 AI 推理
+    uv run photowall tags --filter   # 不调用 AI 模型，仅根据最新的黑名单/同义词/阈值重算 tags
 
 说明:
     1. 首次运行会自动从 HuggingFace 下载 WD14 ONNX 模型与词表 (约 300MB，支持 HF_ENDPOINT 镜像)。
@@ -16,6 +16,7 @@ import argparse
 import csv
 import json
 import sys
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -594,8 +595,19 @@ def filter_tags(
 # ==============================================================================
 
 
-def main():
-    parser = argparse.ArgumentParser(description="照片墙 WD14 Tagger 增量打标工具")
+def build_parser(
+    parser: argparse.ArgumentParser | None = None,
+) -> argparse.ArgumentParser:
+    """构建 tags 命令的命令行参数解析器。"""
+    if parser is None:
+        parser = argparse.ArgumentParser(description="照片墙 WD14 Tagger 增量打标工具")
+    parser.add_argument(
+        "--dir",
+        "-d",
+        type=Path,
+        default=None,
+        help="项目根目录路径 (默认: 当前工作目录)",
+    )
     parser.add_argument(
         "--force", action="store_true", help="强制对所有图片重新运行 AI 模型推理"
     )
@@ -620,9 +632,12 @@ def main():
         action="store_true",
         help="详细输出每个文件的完整路径 (FullName) 与缓存状态",
     )
-    args = parser.parse_args()
+    return parser
 
-    project_dir = Path(__file__).resolve().parent
+
+def run(args: argparse.Namespace) -> None:
+    """执行 WD14 Tagger 打标主流程。"""
+    project_dir = (args.dir if getattr(args, "dir", None) else Path.cwd()).resolve()
     assets_dir = project_dir / "assets"
     tags_file = project_dir / "tags.json"
     cache_dir = project_dir / ".cache" / "huggingface"
@@ -919,6 +934,12 @@ def main():
     print(
         f"[√] 标签缓存已写入: {tags_file.resolve()} (共计索引 {len(updated_files)} 张图片)"
     )
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    run(args)
 
 
 if __name__ == "__main__":

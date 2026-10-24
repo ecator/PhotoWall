@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-photowall = "photowall:main"
+photowall = "photowall.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.12.7,<0.13.0"]
@@ -26,6 +26,9 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.17.2",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.ruff.lint]
 ignore = [

@@ -1,2 +1,3 @@
-def main() -> None:
-    print("Hello from photowall!")
+from photowall.cli import main
+
+__all__ = ["main"]

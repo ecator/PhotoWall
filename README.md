@@ -1,8 +1,8 @@
 # 照片墙
 
-这是一个纯本地单页`index.html`+`assets.js`的照片墙应用，通过`assets.py`脚本扫描`assets`目录后生成`assest.js`文件，在`index.html`中会加载`assets.js`文件从而展示照片。
+这是一个纯本地单页`index.html`+`assets.js`的照片墙应用，通过`photowall assets`子命令扫描`assets`目录后生成`assets.js`文件，在`index.html`中会加载`assets.js`文件从而展示照片。
 
-通过运行`uv run tags.py`来生成`tags.json`文件，然后运行`uv run assets.py`来生成最终的`assets.js`文件，`assets.py`会参照`tags.json`中的描述来给图片添加标签。
+通过运行`uv run photowall tags`来生成`tags.json`文件，然后运行`uv run photowall assets`来生成最终的`assets.js`文件，`assets`子命令会参照`tags.json`中的描述来给图片添加标签。
 
 ## 快速开始
 

@@ -2,13 +2,13 @@
 assets.py - 照片墙元数据生成脚本
 
 使用方法:
-    uv run assets.py                         # 使用默认标题 "PhotoWall"
-    uv run assets.py --title "我的二次元画廊"   # 指定自定义相册标题
+    uv run photowall assets                         # 使用默认标题 "PhotoWall"
+    uv run photowall assets --title "我的二次元画廊"   # 指定自定义相册标题
 
 功能说明:
     1. 自动扫描 assets/ 目录下的所有图片与视频，无条件全量生成 assets.js。
     2. 校验 tags.json：
-       - 若 tags.json 不存在，输出显眼警告提示用户先运行 uv run tags.py；
+       - 若 tags.json 不存在，输出显眼警告提示用户先运行 uv run photowall tags；
        - 若某张图片的文件大小或修改时间与 tags.json 不一致，输出该文件的 FullName 警告。
     3. 解析每张图片的真实尺寸，并自动根据 EXIF Orientation 校正宽高旋转。
     4. 自动提取 MP4 视频时长。
@@ -23,6 +23,7 @@ import os
 import re
 import sys
 import urllib.parse
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -230,8 +231,19 @@ def parse_media_file(
     return rel_path, file_size, file_mtime, width, height, final_timestamp, duration
 
 
-def main():
-    parser = argparse.ArgumentParser(description="照片墙 assets.js 全量生成脚本")
+def build_parser(
+    parser: argparse.ArgumentParser | None = None,
+) -> argparse.ArgumentParser:
+    """构建 assets 命令的命令行参数解析器。"""
+    if parser is None:
+        parser = argparse.ArgumentParser(description="照片墙 assets.js 全量生成脚本")
+    parser.add_argument(
+        "--dir",
+        "-d",
+        type=Path,
+        default=None,
+        help="项目根目录路径 (默认: 当前工作目录)",
+    )
     parser.add_argument(
         "--title",
         type=str,
@@ -243,9 +255,12 @@ def main():
         action="store_true",
         help="忽略本地元数据缓存，强制重新使用多线程读取并解析所有媒体文件的尺寸与时长",
     )
-    args = parser.parse_args()
+    return parser
 
-    project_dir = Path(__file__).resolve().parent
+
+def run(args: argparse.Namespace) -> None:
+    """执行 assets.js 生成主流程。"""
+    project_dir = (args.dir if getattr(args, "dir", None) else Path.cwd()).resolve()
     assets_dir = project_dir / "assets"
     tags_file = project_dir / "tags.json"
     output_file = project_dir / "assets.js"
@@ -275,7 +290,7 @@ def main():
         print("\n" + "=" * 70)
         print("[警告] 未检测到 tags.json 标签缓存文件！")
         print(f"       期望路径: {tags_file.resolve()}")
-        print("       建议先运行: uv run tags.py 生成 AI 标签。")
+        print("       建议先运行: uv run photowall tags 生成 AI 标签。")
         print("       当前将以无 AI 标签模式继续生成 assets.js...")
         print("=" * 70 + "\n")
 
@@ -429,14 +444,14 @@ def main():
                     tqdm.write(
                         f"[警告] 图片信息不匹配: {full_path.resolve()}\n"
                         f"       磁盘: (size={file_size}, mtime={file_mtime}) vs 缓存: (size={c_size}, mtime={c_mtime})\n"
-                        f"       可能 tags.json 不是最新的，请考虑重新运行 uv run tags.py"
+                        f"       可能 tags.json 不是最新的，请考虑重新运行 uv run photowall tags"
                     )
                 ai_tags = cached_entry.get("tags", [])
             else:
                 missing_tags_count += 1
                 tqdm.write(
                     f"[警告] 图片未在 tags.json 中找到: {full_path.resolve()}\n"
-                    f"       该图片可能为新增文件，请考虑重新运行 uv run tags.py 进行打标"
+                    f"       该图片可能为新增文件，请考虑重新运行 uv run photowall tags 进行打标"
                 )
 
         # 标签融合：目录标签 + 形态属性标签 + AI标签
@@ -477,7 +492,7 @@ def main():
             print(
                 f"[提示] 共有 {mismatched_tags_count} 个图片文件属性与 tags.json 不匹配。"
             )
-        print("       建议运行: uv run tags.py 更新标签缓存。")
+        print("       建议运行: uv run photowall tags 更新标签缓存。")
         print("-" * 60 + "\n")
 
     # 5. 构建 folders 列表 (计算 directCount, totalCount, subFolderCount, cover)
@@ -585,7 +600,7 @@ def main():
     # 8. 无条件生成写入 assets.js (原子写入)
     temp_output_file = project_dir / "assets.js.tmp"
     js_content = (
-        "// 由 assets.py 自动生成\nwindow.PHOTO_WALL_DATA = "
+        "// 由 photowall assets 自动生成\nwindow.PHOTO_WALL_DATA = "
         + json.dumps(wall_data, ensure_ascii=False, indent=2)
         + ";\n"
     )
@@ -602,6 +617,12 @@ def main():
     print(f"    - 目录数量: {len(folders)}")
     print(f"    - 唯一标签: {len(sorted_tags)}")
     print("=" * 60)
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    run(args)
 
 
 if __name__ == "__main__":
