@@ -1,5 +1,5 @@
 # /// script
-# requires-python = ">=3.10"
+# requires-python = "~=3.14.0"
 # dependencies = [
 #     "pillow>=10.0.0",
 #     "tqdm>=4.66.0",
@@ -45,8 +45,7 @@ VIDEO_EXTENSIONS: Set[str] = {".mp4", ".webm"}
 def natural_sort_key(s: str) -> List[Any]:
     """自然排序键函数 (使 2.jpg 排在 10.jpg 前面，对中文与英文路径均生效)。"""
     return [
-        int(text) if text.isdigit() else text.lower()
-        for text in re.split(r"(\d+)", s)
+        int(text) if text.isdigit() else text.lower() for text in re.split(r"(\d+)", s)
     ]
 
 
@@ -216,7 +215,7 @@ def compute_aspect_tags(
 
 
 def parse_media_file(
-    item: Tuple[Path, str, str, int, int]
+    item: Tuple[Path, str, str, int, int],
 ) -> Tuple[str, int, int, int, int, float]:
     """
     单文件解析任务 (供多线程池并发调用)。
@@ -274,7 +273,9 @@ def main():
             with open(tags_file, "r", encoding="utf-8") as f:
                 tags_data = json.load(f)
             tags_cache = tags_data.get("files", {})
-            print(f"[*] 已加载标签缓存文件: {tags_file.resolve()} (条目数: {len(tags_cache)})")
+            print(
+                f"[*] 已加载标签缓存文件: {tags_file.resolve()} (条目数: {len(tags_cache)})"
+            )
         except Exception as e:
             print(f"[警告] tags.json 解析失败: {e}")
     else:
@@ -291,7 +292,9 @@ def main():
         try:
             with open(media_cache_file, "r", encoding="utf-8") as f:
                 media_cache = json.load(f)
-            print(f"[*] 已载入媒体元数据缓存: {media_cache_file.resolve()} (历史条目: {len(media_cache)})")
+            print(
+                f"[*] 已载入媒体元数据缓存: {media_cache_file.resolve()} (历史条目: {len(media_cache)})"
+            )
         except Exception as e:
             print(f"[警告] 读取媒体缓存失败: {e}")
 
@@ -350,7 +353,15 @@ def main():
                     unit="文件",
                 )
             )
-        for rel_path, file_size, file_mtime, width, height, final_timestamp, duration in results:
+        for (
+            rel_path,
+            file_size,
+            file_mtime,
+            width,
+            height,
+            final_timestamp,
+            duration,
+        ) in results:
             media_cache[rel_path] = {
                 "size": file_size,
                 "mtime": file_mtime,
@@ -386,7 +397,9 @@ def main():
     video_count = 0
 
     print("[*] 正在组装媒体数据并融合标签...")
-    for idx, (full_path, rel_to_assets, media_type, file_size, file_mtime) in enumerate(file_info_list, start=1):
+    for idx, (full_path, rel_to_assets, media_type, file_size, file_mtime) in enumerate(
+        file_info_list, start=1
+    ):
         total_size += file_size
         ext = full_path.suffix.lower().lstrip(".")
         if media_type == "image":
@@ -467,7 +480,9 @@ def main():
         if missing_tags_count > 0:
             print(f"[提示] 共有 {missing_tags_count} 个图片文件未在 tags.json 中找到。")
         if mismatched_tags_count > 0:
-            print(f"[提示] 共有 {mismatched_tags_count} 个图片文件属性与 tags.json 不匹配。")
+            print(
+                f"[提示] 共有 {mismatched_tags_count} 个图片文件属性与 tags.json 不匹配。"
+            )
         print("       建议运行: uv run tags.py 更新标签缓存。")
         print("-" * 60 + "\n")
 
@@ -492,8 +507,13 @@ def main():
 
         # 直属子目录数量
         sub_folders = [
-            p for p in all_folder_paths
-            if p != f_path and ((f_path == "" and "/" not in p) or (p.startswith(f"{f_path}/") and len(p.split("/")) == depth + 1))
+            p
+            for p in all_folder_paths
+            if p != f_path
+            and (
+                (f_path == "" and "/" not in p)
+                or (p.startswith(f"{f_path}/") and len(p.split("/")) == depth + 1)
+            )
         ]
         sub_folder_count = len(sub_folders)
 
@@ -505,7 +525,8 @@ def main():
             total_items = items
         else:
             total_items = [
-                it for it in items
+                it
+                for it in items
                 if it["folder"] == f_path or it["folder"].startswith(f"{f_path}/")
             ]
         folder_total_count = len(total_items)
@@ -543,7 +564,9 @@ def main():
 
     sorted_tags = [
         {"name": t, "count": count}
-        for t, count in sorted(tag_counts.items(), key=lambda x: (-x[1], natural_sort_key(x[0])))
+        for t, count in sorted(
+            tag_counts.items(), key=lambda x: (-x[1], natural_sort_key(x[0]))
+        )
     ]
 
     # 7. 组装最终 PHOTO_WALL_DATA 结构
@@ -567,9 +590,11 @@ def main():
 
     # 8. 无条件生成写入 assets.js (原子写入)
     temp_output_file = project_dir / "assets.js.tmp"
-    js_content = "// 由 assets.py 自动生成\nwindow.PHOTO_WALL_DATA = " + json.dumps(
-        wall_data, ensure_ascii=False, indent=2
-    ) + ";\n"
+    js_content = (
+        "// 由 assets.py 自动生成\nwindow.PHOTO_WALL_DATA = "
+        + json.dumps(wall_data, ensure_ascii=False, indent=2)
+        + ";\n"
+    )
 
     with open(temp_output_file, "w", encoding="utf-8") as f:
         f.write(js_content)

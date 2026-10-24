@@ -1,5 +1,5 @@
 # /// script
-# requires-python = ">=3.10"
+# requires-python = "~=3.14.0"
 # dependencies = [
 #     "huggingface-hub>=0.20.0",
 #     "numpy>=1.24.0",
@@ -48,11 +48,15 @@ MODEL_FILENAME = "model.onnx"
 TAGS_FILENAME = "selected_tags.csv"
 
 # 采样与过滤阈值 (高精简模式：大幅削减体积，只保留绝对高确信度特征)
-BASE_THRESHOLD = 0.50  # 存入 raw 缓存的底线阈值 (由 0.35 调高至 0.50，直接剔除所有低频与微弱推测)
+BASE_THRESHOLD = (
+    0.50  # 存入 raw 缓存的底线阈值 (由 0.35 调高至 0.50，直接剔除所有低频与微弱推测)
+)
 GENERAL_THRESHOLD = 0.60  # 最终进入 tags 的常规标签阈值 (由 0.48 调高至 0.60，只保留画面最显著的核心特征)
 CHARACTER_THRESHOLD = 0.85  # 最终进入 tags 的角色名阈值 (设高防止误认)
 MAX_TAGS_PER_IMAGE = 6  # 单张图片最终保留的最大标签数量 (照片墙展示最佳体验: 3~6 个)
-MAX_RAW_TAGS_PER_IMAGE = 10  # 单张图片 raw 缓存最多保留的条目数 (双重防线，防止单图臃肿)
+MAX_RAW_TAGS_PER_IMAGE = (
+    10  # 单张图片 raw 缓存最多保留的条目数 (双重防线，防止单图臃肿)
+)
 
 # 全局黑名单 (中英文均可匹配，命中的标签不会出现在 tags 中)
 BLACKLIST: Set[str] = {
@@ -382,7 +386,9 @@ def load_translations(base_dir: Path, cache_dir: Path) -> Dict[str, str]:
             continue
 
     print("[*] 暂无法连接到在线词库，已使用内置常用高频词典兜底。")
-    print(f"    (提示: 你也可以手动下载 tags_zh_cn.csv 放到: {(base_dir / 'tags_zh_cn.csv').resolve()} 生效)")
+    print(
+        f"    (提示: 你也可以手动下载 tags_zh_cn.csv 放到: {(base_dir / 'tags_zh_cn.csv').resolve()} 生效)"
+    )
     return translations
 
 
@@ -538,7 +544,10 @@ def main():
         "--filter", action="store_true", help="仅重算过滤规则与翻译 (不调用 AI 模型)"
     )
     parser.add_argument(
-        "-v", "--verbose", action="store_true", help="详细输出每个文件的完整路径 (FullName) 与缓存状态"
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="详细输出每个文件的完整路径 (FullName) 与缓存状态",
     )
     args = parser.parse_args()
 
@@ -743,7 +752,9 @@ def main():
         json.dump(result_data, f, ensure_ascii=False, indent=2)
     temp_tags_file.replace(tags_file)
 
-    print(f"[√] 标签缓存已写入: {tags_file.resolve()} (共计索引 {len(updated_files)} 张图片)")
+    print(
+        f"[√] 标签缓存已写入: {tags_file.resolve()} (共计索引 {len(updated_files)} 张图片)"
+    )
 
 
 if __name__ == "__main__":
