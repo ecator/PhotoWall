@@ -1,0 +1,3962 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PhotoWall</title>
+  <style>
+:root {
+  --bg-primary: #0b0f19;
+  --bg-secondary: #111827;
+  --bg-card: #111827;
+  --bg-card-hover: #1f2937;
+  --bg-hover: rgba(255, 255, 255, 0.06);
+  --bg-active: rgba(99, 102, 241, 0.18);
+  --bg-glass: rgba(11, 15, 25, 0.78);
+  --bg-glass-card: rgba(17, 24, 39, 0.85);
+  --border-color: #1f2937;
+  --border-light: #374151;
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-light: rgba(99, 102, 241, 0.15);
+  --accent-glow: rgba(99, 102, 241, 0.4);
+  --danger: #ef4444;
+  --danger-light: rgba(239, 68, 68, 0.15);
+  --success: #10b981;
+  --warning: #f59e0b;
+  --card-min-width: 240px;
+  --topbar-height: 58px;
+  --sidebar-width: 280px;
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+}
+
+body.light-theme {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1f5f9;
+  --bg-hover: rgba(0, 0, 0, 0.05);
+  --bg-active: rgba(99, 102, 241, 0.12);
+  --bg-glass: rgba(255, 255, 255, 0.85);
+  --bg-glass-card: rgba(255, 255, 255, 0.9);
+  --border-color: #e2e8f0;
+  --border-light: #cbd5e1;
+  --border-glass: rgba(0, 0, 0, 0.08);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-light: rgba(99, 102, 241, 0.1);
+  --accent-glow: rgba(99, 102, 241, 0.25);
+  --danger: #ef4444;
+  --danger-light: rgba(239, 68, 68, 0.1);
+  --success: #10b981;
+  --warning: #f59e0b;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  overflow-x: hidden;
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Icons */
+.svg-icon {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+.svg-icon-sm {
+  width: 14px;
+  height: 14px;
+}
+.svg-icon-lg {
+  width: 22px;
+  height: 22px;
+}
+
+
+/* App Container Layout */
+#app-root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Topbar */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--topbar-height);
+  background-color: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  gap: 16px;
+  transition: border-color var(--transition-normal);
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.brand-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.brand-btn:hover {
+  background-color: var(--bg-hover);
+}
+.brand-logo-icon {
+  color: var(--accent);
+}
+
+.sidebar-toggle-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+.sidebar-toggle-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-light);
+}
+
+/* Search Bar */
+.topbar-center {
+  flex: 1;
+  max-width: 480px;
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.search-wrapper {
+  width: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  height: 36px;
+  padding: 0 76px 0 36px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  outline: none;
+  transition: all var(--transition-fast);
+}
+.search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-shortcut-hint {
+  position: absolute;
+  right: 32px;
+  font-size: 0.725rem;
+  padding: 2px 6px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  color: var(--text-muted);
+  pointer-events: none;
+  font-family: monospace;
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.search-clear-btn:hover {
+  color: var(--text-primary);
+}
+
+/* Topbar Right Controls */
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn-icon {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  height: 34px;
+}
+.btn-icon:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-light);
+}
+.btn-icon.active {
+  background-color: var(--accent-light);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.btn-primary {
+  background-color: var(--accent);
+  color: #ffffff !important;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+  height: 34px;
+}
+.btn-primary:hover {
+  background-color: var(--accent-hover);
+  border-color: var(--accent-hover);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+/* Subfolder Switch Control */
+.subfolder-switch-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.825rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  height: 34px;
+}
+.subfolder-switch-label:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+.subfolder-switch-label input {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* Card Width Slider */
+.slider-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px;
+}
+.card-slider {
+  width: 80px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-color);
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* View Mode Selector */
+.segmented-control {
+  display: inline-flex;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
+}
+.segmented-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 4px 7px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+.segmented-btn:hover {
+  color: var(--text-primary);
+}
+.segmented-btn.active {
+  background-color: var(--accent);
+  color: #ffffff;
+}
+
+/* Layout Main Body */
+.main-wrapper {
+  display: flex;
+  flex: 1;
+  min-height: calc(100vh - var(--topbar-height));
+  position: relative;
+}
+
+/* Sidebar */
+.sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  background-color: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  transition: width var(--transition-normal), transform var(--transition-normal);
+  position: sticky;
+  top: var(--topbar-height);
+  height: calc(100vh - var(--topbar-height));
+  overflow: hidden;
+  z-index: 50;
+}
+.sidebar.collapsed {
+  width: 0;
+  border-right: none;
+  visibility: hidden;
+}
+
+.sidebar-header {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.nav-shortcut-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--transition-fast);
+}
+.nav-shortcut-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+.nav-shortcut-btn.active {
+  background-color: var(--accent-light);
+  color: var(--accent);
+  font-weight: 600;
+}
+.nav-shortcut-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nav-shortcut-badge {
+  font-size: 0.75rem;
+  background-color: var(--border-color);
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  color: var(--text-muted);
+}
+.nav-shortcut-btn.active .nav-shortcut-badge {
+  background-color: var(--accent);
+  color: #ffffff;
+}
+
+/* Directory Tree Container */
+.tree-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 0;
+}
+.tree-title {
+  padding: 4px 14px 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.tree-node {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 6px 12px 6px 0;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+  position: relative;
+  user-select: none;
+}
+.tree-node:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+.tree-node.active {
+  background-color: var(--accent-light);
+  color: var(--accent);
+  font-weight: 600;
+}
+.tree-node.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  background-color: var(--accent);
+  border-radius: 0 2px 2px 0;
+}
+
+.tree-toggle-arrow {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transition: transform var(--transition-fast);
+}
+.tree-toggle-arrow:hover {
+  background-color: var(--border-color);
+  color: var(--text-primary);
+}
+.tree-toggle-arrow.expanded {
+  transform: rotate(90deg);
+}
+.tree-toggle-arrow.empty {
+  visibility: hidden;
+}
+
+.tree-node-icon {
+  margin-right: 6px;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.tree-node-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tree-node-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  padding: 1px 6px;
+  border-radius: 10px;
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+.tree-node.active .tree-node-count {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Sidebar Footer */
+.sidebar-footer {
+  padding: 12px 14px;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+  font-size: 0.775rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.sidebar-footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.sidebar-footer-highlight {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+
+/* Main Content Container */
+.content-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 24px 48px;
+}
+
+/* Breadcrumbs bar */
+.breadcrumbs-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+  color: var(--text-secondary);
+}
+.breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+.breadcrumb-item:hover {
+  background-color: var(--bg-hover);
+  color: var(--accent);
+}
+.breadcrumb-item.active {
+  color: var(--text-primary);
+  font-weight: 600;
+  cursor: default;
+}
+.breadcrumb-separator {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+/* Subfolders Section */
+.subfolders-section {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.subfolders-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.subfolders-list {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+}
+.subfolder-card {
+  flex: 0 0 180px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+.subfolder-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.subfolder-cover {
+  width: 100%;
+  height: 90px;
+  background-color: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.subfolder-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transition-normal);
+}
+.subfolder-card:hover .subfolder-cover img {
+  transform: scale(1.05);
+}
+.subfolder-cover-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15));
+  color: var(--accent);
+}
+.subfolder-info {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.subfolder-name {
+  font-size: 0.825rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.subfolder-count {
+  font-size: 0.725rem;
+  color: var(--text-muted);
+}
+
+/* Tags Filter Bar */
+.tags-bar-container {
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 6px;
+  scrollbar-width: thin;
+}
+.tag-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+.tag-capsule:hover {
+  border-color: var(--border-light);
+  color: var(--text-primary);
+  background-color: var(--bg-hover);
+}
+.tag-capsule.active {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+  font-weight: 500;
+}
+.tag-badge {
+  font-size: 0.7rem;
+  opacity: 0.75;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0 5px;
+  border-radius: 8px;
+}
+.tag-capsule.active .tag-badge {
+  background: rgba(255, 255, 255, 0.25);
+  opacity: 1;
+}
+
+/* Filter Toolbar (Type & Sort) */
+.filter-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+.filter-toolbar-left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.filter-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.type-filter-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.type-filter-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+.type-filter-btn.active {
+  background-color: var(--accent-light);
+  color: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.sort-select {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  cursor: pointer;
+  outline: none;
+}
+.sort-select:focus {
+  border-color: var(--accent);
+}
+
+.results-count-text {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Media Grid Layouts */
+.media-container {
+  width: 100%;
+  position: relative;
+  min-height: 200px;
+}
+
+/* 1. Masonry Layout */
+.media-container.mode-masonry {
+  column-width: var(--card-min-width);
+  column-gap: 16px;
+}
+.media-container.mode-masonry .media-card {
+  break-inside: avoid;
+  margin-bottom: 16px;
+  display: inline-block;
+  width: 100%;
+}
+
+/* 2. Grid Layout */
+.media-container.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--card-min-width), 100%), 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+/* 3. Square Layout */
+.media-container.mode-square {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--card-min-width), 100%), 1fr));
+  gap: 16px;
+}
+.media-container.mode-square .media-card {
+  aspect-ratio: 1 / 1 !important;
+}
+
+/* Media Card */
+.media-card {
+  position: relative;
+  background-color: var(--bg-card);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+  contain: paint;
+}
+.media-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--accent);
+}
+
+.media-thumbnail-wrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--bg-secondary);
+}
+
+.media-thumbnail-wrapper img,
+.media-thumbnail-wrapper video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform var(--transition-normal);
+}
+.media-card:hover .media-thumbnail-wrapper img,
+.media-card:hover .media-thumbnail-wrapper video {
+  transform: scale(1.03);
+}
+
+/* Card Badges */
+.card-badge-top-left {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 5;
+  display: flex;
+  gap: 4px;
+}
+.badge-tag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.badge-4k {
+  background: rgba(245, 158, 11, 0.85);
+  color: #ffffff;
+}
+.badge-video {
+  background: rgba(99, 102, 241, 0.85);
+  color: #ffffff;
+}
+.badge-gif {
+  background: rgba(236, 72, 153, 0.85);
+  color: #ffffff;
+}
+
+.card-duration-badge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  z-index: 5;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #ffffff;
+  backdrop-filter: blur(6px);
+  font-family: monospace;
+}
+
+/* Card Favorite Heart Button */
+.card-fav-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 6;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  border: none;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.85);
+  transition: all var(--transition-fast);
+}
+.media-card:hover .card-fav-btn,
+.card-fav-btn.active {
+  opacity: 1;
+  transform: scale(1);
+}
+.card-fav-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: scale(1.1);
+}
+.card-fav-btn.active {
+  color: var(--danger);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+/* Card Hover Info Overlay */
+.card-hover-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 28px 10px 10px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.5) 60%, transparent 100%);
+  color: #ffffff;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: all var(--transition-fast);
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+}
+.media-card:hover .card-hover-overlay {
+  opacity: 1;
+  transform: translateY(0);
+}
+.overlay-filename {
+  font-size: 0.8rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.overlay-meta {
+  font-size: 0.7rem;
+  opacity: 0.8;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.overlay-tags {
+  display: flex;
+  gap: 4px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+.overlay-tag {
+  font-size: 0.65rem;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+/* Sentinel & Infinite Loading */
+.scroll-sentinel {
+  width: 100%;
+  height: 40px;
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Empty State in Grid */
+.grid-empty-state {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.grid-empty-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+
+/* ========================================================
+   Lightbox Modal
+   ======================================================== */
+.lightbox-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background-color: rgba(11, 15, 25, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: none;
+  flex-direction: column;
+  color: #ffffff;
+  user-select: none;
+  overflow: hidden;
+}
+.lightbox-modal.active {
+  display: flex;
+}
+
+/* Lightbox Header */
+.lightbox-header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6) 0%, transparent 100%);
+  z-index: 10;
+  flex-shrink: 0;
+}
+.lightbox-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.lightbox-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 40vw;
+}
+.lightbox-counter {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-full);
+}
+.lightbox-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lightbox-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  transition: all var(--transition-fast);
+}
+.lightbox-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.lightbox-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.lightbox-btn-danger.active {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+/* Lightbox Main Stage */
+.lightbox-stage {
+  flex: 1;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+.lightbox-viewport {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+}
+.lightbox-viewport.panning {
+  cursor: grabbing;
+}
+
+.lightbox-media-wrapper {
+  transform-origin: center center;
+  transition: transform 0.05s linear;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  max-height: 100%;
+  will-change: transform;
+}
+.lightbox-viewport.panning .lightbox-media-wrapper {
+  transition: none !important;
+}
+.lightbox-media-wrapper img {
+  max-width: 90vw;
+  max-height: 82vh;
+  object-fit: contain;
+  pointer-events: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  border-radius: 4px;
+}
+.lightbox-media-wrapper video {
+  max-width: 90vw;
+  max-height: 82vh;
+  border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* Lightbox Navigation Arrows */
+.lightbox-nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 15;
+  transition: all var(--transition-fast);
+}
+.lightbox-nav-arrow:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: translateY(-50%) scale(1.1);
+}
+.lightbox-nav-prev {
+  left: 20px;
+}
+.lightbox-nav-next {
+  right: 20px;
+}
+
+/* Lightbox Details Drawer */
+.lightbox-drawer {
+  width: 320px;
+  background: var(--bg-glass-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-left: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  transition: transform var(--transition-normal), width var(--transition-normal);
+  z-index: 20;
+  overflow-y: auto;
+}
+.lightbox-drawer.collapsed {
+  transform: translateX(100%);
+  width: 0;
+  border-left: none;
+}
+.drawer-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.drawer-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.drawer-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.drawer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.drawer-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+.drawer-value {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+.drawer-folder-link {
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.drawer-tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.drawer-tag-pill {
+  font-size: 0.775rem;
+  padding: 3px 8px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.drawer-tag-pill:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+/* Lightbox Bottom Controls */
+.lightbox-bottom-bar {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 100%);
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+/* ========================================================
+   Fullscreen Slideshow
+   ======================================================== */
+.slideshow-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background-color: #000000;
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  user-select: none;
+}
+.slideshow-modal.active {
+  display: flex;
+}
+.slideshow-modal.hud-hidden {
+  cursor: none;
+}
+
+/* Top Countdown Streamer */
+.slideshow-progress-bar-track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.15);
+  z-index: 30;
+}
+.slideshow-progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #6366f1, #a855f7, #ec4899);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.8);
+  transition: width 0.1s linear;
+}
+
+/* Slideshow Stage */
+.slideshow-stage {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.slideshow-media-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.8s ease-in-out;
+}
+.slideshow-media-container.current {
+  opacity: 1;
+  z-index: 5;
+}
+
+.slideshow-media-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.slideshow-media-container img.kenburns {
+  animation: kenburns 6s ease-in-out infinite alternate;
+}
+@keyframes kenburns {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.08) translate(0.5%, -0.5%); }
+}
+
+.slideshow-media-container video {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* Slideshow HUD */
+.slideshow-hud {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(17, 24, 39, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-full);
+  padding: 8px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 25;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+}
+.slideshow-modal.hud-hidden .slideshow-hud {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(16px);
+}
+
+.hud-btn {
+  background: none;
+  border: none;
+  color: #ffffff;
+  padding: 6px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+.hud-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+.hud-btn.active {
+  color: var(--accent);
+}
+.hud-btn-danger.active {
+  color: var(--danger);
+}
+.hud-counter {
+  font-size: 0.825rem;
+  font-family: monospace;
+  opacity: 0.85;
+}
+.hud-select {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.775rem;
+  cursor: pointer;
+  outline: none;
+}
+
+/* ========================================================
+   Uninitialized & Empty State Onboarding Card
+   ======================================================== */
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background-color: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.onboarding-card {
+  max-width: 560px;
+  width: 100%;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.onboarding-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.onboarding-icon {
+  width: 44px;
+  height: 44px;
+  color: var(--accent);
+}
+.onboarding-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.onboarding-desc {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.onboarding-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+}
+.step-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--accent-light);
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.step-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.step-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.step-code-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.step-code {
+  flex: 1;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  overflow-x: auto;
+}
+.btn-copy {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+.btn-copy:hover {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.onboarding-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+/* ========================================================
+   Toast Notification System
+   ======================================================== */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 3000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background-color: var(--bg-glass-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  box-shadow: var(--shadow-lg);
+  animation: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  max-width: 360px;
+}
+.toast.toast-hiding {
+  opacity: 0;
+  transform: translateY(10px) scale(0.95);
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.toast-icon {
+  flex-shrink: 0;
+}
+.toast-info .toast-icon { color: var(--accent); }
+.toast-success .toast-icon { color: var(--success); }
+.toast-warning .toast-icon { color: var(--warning); }
+.toast-error .toast-icon { color: var(--danger); }
+
+  </style>
+  <script src="assets.js"></script>
+</head>
+<body>
+<!-- Uninitialized & Empty State Onboarding Screen -->
+<div id="onboarding-overlay" class="onboarding-overlay" style="display: none;">
+  <div class="onboarding-card">
+    <div class="onboarding-header">
+      <div id="onboarding-icon-box" class="onboarding-icon"></div>
+      <div>
+        <h1 class="onboarding-title">PhotoWall 相册初始化引导</h1>
+        <p class="onboarding-desc">未检测到相册元数据或媒体数据为空。请按照以下步骤生成相册索引：</p>
+      </div>
+    </div>
+    <div class="onboarding-steps">
+      <div class="step-item">
+        <div class="step-badge">1</div>
+        <div class="step-content">
+          <div class="step-title">放置媒体文件</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">将您的照片与视频放入 <code>assets/</code> 目录（支持多级子文件夹）。</div>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-badge">2</div>
+        <div class="step-content">
+          <div class="step-title">生成 AI 标签索引 (可选但推荐)</div>
+          <div class="step-code-row">
+            <code class="step-code">uv run tags.py</code>
+            <button class="btn-copy" onclick="copyToClipboard('uv run tags.py', this)"><span class="copy-icon"></span> 复制</button>
+          </div>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-badge">3</div>
+        <div class="step-content">
+          <div class="step-title">扫描并生成相册元数据</div>
+          <div class="step-code-row">
+            <code class="step-code">uv run assets.py</code>
+            <button class="btn-copy" onclick="copyToClipboard('uv run assets.py', this)"><span class="copy-icon"></span> 复制</button>
+          </div>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-badge">4</div>
+        <div class="step-content">
+          <div class="step-title">或者直接运行一键初始化脚本</div>
+          <div class="step-code-row">
+            <code class="step-code">init.bat</code>
+            <button class="btn-copy" onclick="copyToClipboard('init.bat', this)"><span class="copy-icon"></span> 复制</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="onboarding-actions">
+      <button class="btn-primary" onclick="window.location.reload()"><span id="onboarding-refresh-icon"></span> 刷新页面</button>
+    </div>
+  </div>
+</div>
+
+<!-- Main App Root -->
+<div id="app-root">
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button id="sidebar-toggle-btn" class="sidebar-toggle-btn" title="切换侧边栏 (折叠/展开)" aria-label="Toggle Sidebar"></button>
+      <a href="javascript:void(0)" id="brand-link" class="brand-btn">
+        <span id="brand-logo"></span>
+        <span id="brand-title">PhotoWall</span>
+      </a>
+    </div>
+
+    <div class="topbar-center">
+      <div class="search-wrapper">
+        <span id="search-icon-slot"></span>
+        <input type="text" id="search-input" class="search-input" placeholder="搜索文件名、路径、标签..." autocomplete="off" />
+        <span class="search-shortcut-hint">/</span>
+        <button id="search-clear-btn" class="search-clear-btn" title="清空搜索"></button>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <label class="subfolder-switch-label" title="包含子目录开关：开启时递归显示所有子目录媒体，关闭时仅显示当前直属媒体">
+        <input type="checkbox" id="subfolder-checkbox" />
+        <span>包含子目录</span>
+      </label>
+
+      <button id="topbar-slideshow-btn" class="btn-primary" title="从头放映当前列表媒体">
+        <span id="topbar-play-icon"></span>
+        <span>放映</span>
+      </button>
+
+      <div class="segmented-control" title="切换网格视图模式">
+        <button id="view-mode-masonry" class="segmented-btn active" title="瀑布流 (Masonry)"></button>
+        <button id="view-mode-grid" class="segmented-btn" title="自适应网格 (Grid)"></button>
+        <button id="view-mode-square" class="segmented-btn" title="紧凑方图 (Square)"></button>
+      </div>
+
+      <div class="slider-container" title="调整卡片列宽 (180px - 420px)">
+        <input type="range" id="card-width-slider" class="card-slider" min="180" max="420" value="240" />
+      </div>
+
+      <button id="theme-toggle-btn" class="btn-icon" title="切换深色/浅色主题" aria-label="Toggle Theme"></button>
+    </div>
+  </header>
+
+  <!-- Main Content Wrapper -->
+  <div class="main-wrapper">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <button id="nav-all-btn" class="nav-shortcut-btn active">
+          <div class="nav-shortcut-left">
+            <span id="nav-all-icon"></span>
+            <span>全部媒体</span>
+          </div>
+          <span id="nav-all-badge" class="nav-shortcut-badge">0</span>
+        </button>
+        <button id="nav-fav-btn" class="nav-shortcut-btn">
+          <div class="nav-shortcut-left">
+            <span id="nav-fav-icon"></span>
+            <span>我的收藏</span>
+          </div>
+          <span id="nav-fav-badge" class="nav-shortcut-badge">0</span>
+        </button>
+      </div>
+
+      <div class="tree-title">目录导航</div>
+      <div id="tree-container" class="tree-container"></div>
+
+      <div id="sidebar-footer" class="sidebar-footer">
+        <div class="sidebar-footer-row">
+          <span>总容量</span>
+          <span id="stat-total-size" class="sidebar-footer-highlight">-</span>
+        </div>
+        <div class="sidebar-footer-row">
+          <span>媒体数</span>
+          <span id="stat-media-count" class="sidebar-footer-highlight">-</span>
+        </div>
+        <div class="sidebar-footer-row">
+          <span>生成于</span>
+          <span id="stat-generated-at">-</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="content-area">
+      <!-- Breadcrumbs Bar -->
+      <nav id="breadcrumbs-bar" class="breadcrumbs-bar"></nav>
+
+      <!-- Subfolders Section -->
+      <section id="subfolders-section" class="subfolders-section" style="display: none;">
+        <div class="subfolders-title">子文件夹</div>
+        <div id="subfolders-list" class="subfolders-list"></div>
+      </section>
+
+      <!-- Capsule Tags Filter Bar -->
+      <div id="tags-bar-container" class="tags-bar-container"></div>
+
+      <!-- Filter Toolbar -->
+      <div class="filter-toolbar">
+        <div class="filter-toolbar-left">
+          <button class="type-filter-btn active" data-type="all">全部</button>
+          <button class="type-filter-btn" data-type="image">图片</button>
+          <button class="type-filter-btn" data-type="video">视频</button>
+          <button class="type-filter-btn" data-type="gif">动图 GIF</button>
+        </div>
+
+        <div class="filter-toolbar-right">
+          <span id="results-count-text" class="results-count-text">共 0 项</span>
+          <select id="sort-select" class="sort-select" title="媒体排序方式">
+            <option value="default">默认序号</option>
+            <option value="time-desc">时间降序 (最新优先)</option>
+            <option value="time-asc">时间升序 (最早优先)</option>
+            <option value="size-desc">体积降序 (最大优先)</option>
+            <option value="size-asc">体积升序 (最小优先)</option>
+            <option value="name-asc">文件名自然排序</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Media Grid -->
+      <div id="media-container" class="media-container mode-masonry"></div>
+
+      <!-- Infinite Scroll Sentinel -->
+      <div id="scroll-sentinel" class="scroll-sentinel">
+        <div id="sentinel-spinner" class="loading-spinner" style="display: none;"></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Lightbox Modal -->
+<div id="lightbox-modal" class="lightbox-modal" tabindex="-1">
+  <div class="lightbox-header">
+    <div class="lightbox-header-left">
+      <span id="lightbox-counter" class="lightbox-counter">1 / 1</span>
+      <h2 id="lightbox-title" class="lightbox-title"></h2>
+    </div>
+    <div class="lightbox-header-right">
+      <button id="lightbox-play-btn" class="lightbox-btn" title="以此图启动幻灯片放映"></button>
+      <button id="lightbox-fav-btn" class="lightbox-btn" title="收藏当前媒体 (快捷键 F)"></button>
+      <button id="lightbox-zoom-in-btn" class="lightbox-btn" title="放大"></button>
+      <button id="lightbox-zoom-out-btn" class="lightbox-btn" title="缩小"></button>
+      <button id="lightbox-zoom-reset-btn" class="lightbox-btn" title="复位/自适应 (快捷键 0)"></button>
+      <button id="lightbox-rotate-btn" class="lightbox-btn" title="顺时针旋转 90°"></button>
+      <button id="lightbox-info-btn" class="lightbox-btn" title="显示详情 (快捷键 I)"></button>
+      <button id="lightbox-close-btn" class="lightbox-btn" title="关闭灯箱 (快捷键 Esc)"></button>
+    </div>
+  </div>
+
+  <div class="lightbox-stage">
+    <button id="lightbox-prev-btn" class="lightbox-nav-arrow lightbox-nav-prev" title="上一张 (← / A)"></button>
+    <div id="lightbox-viewport" class="lightbox-viewport">
+      <div id="lightbox-media-wrapper" class="lightbox-media-wrapper"></div>
+    </div>
+    <button id="lightbox-next-btn" class="lightbox-nav-arrow lightbox-nav-next" title="下一张 (→ / D)"></button>
+
+    <!-- Details Drawer -->
+    <div id="lightbox-drawer" class="lightbox-drawer collapsed">
+      <div class="drawer-header">
+        <span class="drawer-title">媒体详细信息</span>
+        <button id="drawer-close-btn" class="hud-btn" title="收起抽屉"></button>
+      </div>
+      <div class="drawer-content">
+        <div class="drawer-section">
+          <div class="drawer-label">文件名称</div>
+          <div id="drawer-filename" class="drawer-value"></div>
+        </div>
+        <div class="drawer-section">
+          <div class="drawer-label">所属目录</div>
+          <div id="drawer-folder" class="drawer-value"></div>
+        </div>
+        <div class="drawer-section">
+          <div class="drawer-label">分辨率 / 尺寸</div>
+          <div id="drawer-dimensions" class="drawer-value"></div>
+        </div>
+        <div class="drawer-section">
+          <div class="drawer-label">文件体积</div>
+          <div id="drawer-size" class="drawer-value"></div>
+        </div>
+        <div class="drawer-section">
+          <div class="drawer-label">修改时间</div>
+          <div id="drawer-date" class="drawer-value"></div>
+        </div>
+        <div class="drawer-section">
+          <div class="drawer-label">标签属性 (点击直接筛选)</div>
+          <div id="drawer-tags" class="drawer-tags-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Fullscreen Slideshow Modal -->
+<div id="slideshow-modal" class="slideshow-modal">
+  <div class="slideshow-progress-bar-track">
+    <div id="slideshow-progress-bar-fill" class="slideshow-progress-bar-fill"></div>
+  </div>
+
+  <div id="slideshow-stage" class="slideshow-stage"></div>
+
+  <div id="slideshow-hud" class="slideshow-hud">
+    <button id="hud-prev-btn" class="hud-btn" title="上一张 (←)"></button>
+    <button id="hud-play-btn" class="hud-btn" title="播放 / 暂停 (空格 Space)"></button>
+    <button id="hud-next-btn" class="hud-btn" title="下一张 (→)"></button>
+    <span id="hud-counter" class="hud-counter">1 / 1</span>
+
+    <button id="hud-mode-btn" class="hud-btn" title="切换模式：顺序循环 / 随机播放"></button>
+
+    <button id="hud-subfolder-btn" class="hud-btn" title="包含子目录开关"></button>
+
+    <select id="hud-interval-select" class="hud-select" title="设置播放间隔">
+      <option value="3000">3 秒</option>
+      <option value="5000" selected>5 秒 (默认)</option>
+      <option value="8000">8 秒</option>
+      <option value="12000">12 秒</option>
+    </select>
+
+    <button id="hud-fav-btn" class="hud-btn" title="收藏当前媒体"></button>
+    <button id="hud-exit-btn" class="hud-btn" title="退出放映 (Esc)"></button>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container" class="toast-container"></div>
+
+
+  <script>
+// Inline SVG Icons Library
+const ICONS = {
+  logo: `<svg class="svg-icon brand-logo-icon" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>`,
+  menu: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>`,
+  search: `<svg class="svg-icon search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>`,
+  close: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`,
+  chevronRight: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>`,
+  chevronLeft: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>`,
+  folder: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`,
+  folderOpen: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg>`,
+  allMedia: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/></svg>`,
+  heartOutline: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35zm0-17c-1.74 0-3.41.81-4.5 2.09C6.41 5.81 4.74 5 3 5 1.58 5 0 6.58 0 8.5c0 3.25 3.01 6.06 7.65 10.28L12 20.35l4.35-3.57C20.99 14.56 24 11.75 24 8.5 24 6.58 22.42 5 21 5c-1.74 0-3.41.81-4.5 2.09C15.41 5.81 13.74 5 12 4.35z" style="display:none"/><path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"/></svg>`,
+  heartFilled: `<svg class="svg-icon" viewBox="0 0 24 24" style="color:#ef4444;fill:#ef4444;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`,
+  sun: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41s-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41s-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z"/></svg>`,
+  moon: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.03 0-5.5-2.47-5.5-5.5 0-1.82.89-3.42 2.26-4.4-.44-.06-.9-.1-1.26-.1z"/></svg>`,
+  masonry: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 4h7v10H4zm9 0h7v6h-7zm0 8h7v8h-7zM4 16h7v4H4z"/></svg>`,
+  grid: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zm-9 9h7v7H4zm9 0h7v7h-7z"/></svg>`,
+  square: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M3 3v18h18V3H3zm16 16H5V5h14v14z"/></svg>`,
+  play: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`,
+  pause: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`,
+  zoomIn: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zm.5-7H9v2H7v1h2v2h1v-2h2V9h-2z"/></svg>`,
+  zoomOut: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zM7 9h5v1H7z"/></svg>`,
+  zoomReset: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 12h-2v3h-3v2h5v-5zM7 9h3V7H5v5h2V9zm14-6H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16.01H3V4.99h18v14.02z"/></svg>`,
+  rotate: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M7.11 8.53L5.7 7.11C4.8 8.27 4.24 9.61 4.07 11h2.02c.14-.87.49-1.72 1.02-2.47zM6.09 13H4.07c.17 1.39.72 2.73 1.62 3.89l1.41-1.42c-.52-.75-.87-1.6-1.01-2.47zm1.01 5.32c1.16.9 2.51 1.44 3.9 1.61V17.9c-.87-.15-1.71-.49-2.46-1.01L7.1 18.32zM13 4.07V1L8.45 5.55 13 10V6.09c3.84.45 6.8 3.7 6.8 7.66 0 2.21-.91 4.2-2.36 5.64l1.42 1.42C20.67 19.01 21.8 16.63 21.8 13.75c0-4.85-3.6-8.86-8.8-9.68z"/></svg>`,
+  info: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`,
+  copy: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`,
+  check: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`,
+  refresh: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>`,
+  loop: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>`,
+  shuffle: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>`,
+  fullscreenExit: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>`,
+  subfolder: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M20 18H4V8h16v10zm0-12h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>`
+};
+
+
+// ========================================================
+// App State & Utility Functions
+// ========================================================
+
+const STATE = {
+  // Theme: 'dark' | 'light'
+  theme: localStorage.getItem('PHOTOWALL_THEME') || 'dark',
+
+  // Directory & Scope
+  currentFolder: '', // '' is root
+  includeSubfolders: localStorage.getItem('PHOTOWALL_INCLUDE_SUBFOLDERS') !== 'false', // default true
+  isFavoritesView: false,
+
+  // Filters & Search
+  searchKeyword: '',
+  mediaType: 'all', // 'all' | 'image' | 'video' | 'gif'
+  selectedTags: new Set(),
+  sortBy: 'default', // 'default' | 'time-desc' | 'time-asc' | 'size-desc' | 'size-asc' | 'name-asc'
+
+  // Layout & UI
+  layoutMode: 'masonry', // 'masonry' | 'grid' | 'square'
+  cardMinWidth: 240,
+  isSidebarCollapsed: false,
+  collapsedFolders: new Set(),
+
+  // Data sets
+  allFolders: [],
+  allItems: [],
+  folderScopedItems: [],
+  filteredItems: [],
+  favoritesSet: new Set(),
+
+  // Pagination / Incremental batching
+  renderedCount: 0,
+  BATCH_SIZE: 60,
+
+  // Lightbox State
+  lightbox: {
+    isOpen: false,
+    currentIndex: 0,
+    zoomScale: 1,
+    translateX: 0,
+    translateY: 0,
+    rotation: 0,
+    isDragging: false,
+    startX: 0,
+    startY: 0,
+    isDrawerOpen: false
+  },
+
+  // Slideshow State
+  slideshow: {
+    isOpen: false,
+    currentIndex: 0,
+    isPlaying: true,
+    isShuffle: false,
+    intervalMs: 5000,
+    timer: null,
+    progressInterval: null,
+    progressStartTime: 0,
+    mouseTimer: null
+  }
+};
+
+// Utilities: R6 Requirements
+function formatBytes(bytes) {
+  if (bytes === undefined || bytes === null || isNaN(bytes) || bytes <= 0 || !Number.isFinite(Number(bytes))) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  if (i <= 0) return `${bytes} B`;
+  const val = (bytes / Math.pow(1024, i)).toFixed(2);
+  return `${val} ${units[i] || 'GB'}`;
+}
+
+function formatDuration(seconds) {
+  if (!seconds || isNaN(seconds) || seconds <= 0 || !Number.isFinite(Number(seconds))) return '00:00';
+  const sec = Math.round(seconds);
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  const pad = (n) => String(n).padStart(2, '0');
+  if (h > 0) {
+    return `${pad(h)}:${pad(m)}:${pad(s)}`;
+  }
+  return `${pad(m)}:${pad(s)}`;
+}
+
+function formatDate(timestamp) {
+  if (!timestamp) return '-';
+  let date;
+  if (typeof timestamp === 'number' || (typeof timestamp === 'string' && !isNaN(Number(timestamp)) && timestamp.trim() !== '')) {
+    date = new Date(Number(timestamp) * 1000);
+  } else {
+    date = new Date(timestamp);
+  }
+  if (isNaN(date.getTime())) return String(timestamp);
+  const pad = (n) => String(n).padStart(2, '0');
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+
+function naturalCompare(a, b) {
+  return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+}
+
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+
+  let iconSvg = ICONS.info;
+  if (type === 'success') iconSvg = ICONS.check;
+  if (type === 'warning' || type === 'error') iconSvg = ICONS.info;
+
+  toast.innerHTML = `<span class="toast-icon">${iconSvg}</span><span>${message}</span>`;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add('toast-hiding');
+    setTimeout(() => {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 300);
+  }, 2600);
+}
+
+function copyToClipboard(text, btnElement) {
+  const fallbackCopy = () => {
+    try {
+      const input = document.createElement('input');
+      input.value = text;
+      input.style.position = 'fixed';
+      input.style.opacity = '0';
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      showToast(`已复制: ${text}`, 'success');
+    } catch (err) {
+      showToast('复制失败，请手动选取代码', 'warning');
+    }
+  };
+
+  const updateBtn = () => {
+    if (btnElement) {
+      const origHtml = btnElement.innerHTML;
+      btnElement.innerHTML = `<span class="svg-icon svg-icon-sm">${ICONS.check}</span> 已复制`;
+      setTimeout(() => {
+        btnElement.innerHTML = origHtml;
+      }, 1500);
+    }
+  };
+
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast(`已复制: ${text}`, 'success');
+      updateBtn();
+    }).catch(() => {
+      fallbackCopy();
+      updateBtn();
+    });
+  } else {
+    fallbackCopy();
+    updateBtn();
+  }
+}
+
+// Local Favorites Persistence & Auto Cleanup
+function initFavorites() {
+  const raw = localStorage.getItem('PHOTOWALL_FAVORITES');
+  let stored = [];
+  if (raw) {
+    try {
+      stored = JSON.parse(raw);
+      if (!Array.isArray(stored)) stored = [];
+    } catch (e) {
+      stored = [];
+    }
+  }
+
+  // Early exit if stored is empty - avoid allocating 193k set on startup
+  if (stored.length === 0) {
+    STATE.favoritesSet = new Set();
+    updateFavoritesBadge();
+    return;
+  }
+
+  // Build valid set and deduplicate
+  const validSrcSet = new Set((STATE.allItems || []).map(it => it.src));
+  const uniqueStored = Array.from(new Set(stored.filter(s => typeof s === 'string')));
+  const cleaned = uniqueStored.filter(src => validSrcSet.has(src));
+
+  if (cleaned.length !== stored.length) {
+    const removedCount = stored.length - cleaned.length;
+    localStorage.setItem('PHOTOWALL_FAVORITES', JSON.stringify(cleaned));
+    showToast(`已自动清理 ${removedCount} 个已失效的收藏项`, 'info');
+  }
+
+  STATE.favoritesSet = new Set(cleaned);
+  updateFavoritesBadge();
+}
+
+function toggleFavorite(src) {
+  if (STATE.favoritesSet.has(src)) {
+    STATE.favoritesSet.delete(src);
+    showToast('已取消收藏', 'info');
+  } else {
+    STATE.favoritesSet.add(src);
+    showToast('已添加到收藏 ❤️', 'success');
+  }
+
+  // Persist
+  localStorage.setItem('PHOTOWALL_FAVORITES', JSON.stringify(Array.from(STATE.favoritesSet)));
+  updateFavoritesBadge();
+  updateVisibleHeartButtons(src);
+
+  // If in favorites view and an item was removed, re-run pipeline
+  if (STATE.isFavoritesView) {
+    runFilterPipeline();
+
+    // Guard active Lightbox index
+    if (STATE.lightbox.isOpen) {
+      if (STATE.filteredItems.length === 0) {
+        closeLightbox();
+        showToast('收藏夹已空', 'info');
+      } else {
+        if (STATE.lightbox.currentIndex >= STATE.filteredItems.length) {
+          STATE.lightbox.currentIndex = STATE.filteredItems.length - 1;
+        }
+        renderLightboxCurrentItem();
+      }
+    }
+
+    // Guard active Slideshow index
+    if (STATE.slideshow.isOpen) {
+      if (STATE.filteredItems.length === 0) {
+        stopSlideshow();
+        showToast('收藏夹已空', 'info');
+      } else {
+        if (STATE.slideshow.currentIndex >= STATE.filteredItems.length) {
+          STATE.slideshow.currentIndex = STATE.filteredItems.length - 1;
+        }
+        renderSlideshowItem();
+      }
+    }
+  }
+}
+
+function updateFavoritesBadge() {
+  const badge = document.getElementById('nav-fav-badge');
+  if (badge) {
+    badge.textContent = STATE.favoritesSet.size;
+  }
+}
+
+function updateVisibleHeartButtons(targetSrc) {
+  // Update in media grid
+  const safeSelector = (window.CSS && CSS.escape)
+    ? `.card-fav-btn[data-src="${CSS.escape(targetSrc)}"]`
+    : `.card-fav-btn[data-src="${targetSrc.replace(/["\\]/g, '\\$&')}"]`;
+  document.querySelectorAll(safeSelector).forEach(btn => {
+    const isFav = STATE.favoritesSet.has(targetSrc);
+    btn.classList.toggle('active', isFav);
+    btn.innerHTML = isFav ? ICONS.heartFilled : ICONS.heartOutline;
+  });
+
+  // Update in Lightbox if open
+  if (STATE.lightbox.isOpen) {
+    const item = STATE.filteredItems[STATE.lightbox.currentIndex];
+    if (item && item.src === targetSrc) {
+      const lbBtn = document.getElementById('lightbox-fav-btn');
+      if (lbBtn) {
+        const isFav = STATE.favoritesSet.has(targetSrc);
+        lbBtn.classList.toggle('active', isFav);
+        lbBtn.classList.toggle('lightbox-btn-danger', isFav);
+        lbBtn.innerHTML = (isFav ? ICONS.heartFilled : ICONS.heartOutline) + ` <span>${isFav ? '已收藏' : '收藏'}</span>`;
+      }
+    }
+  }
+
+  // Update in Slideshow if open
+  if (STATE.slideshow.isOpen) {
+    const item = STATE.filteredItems[STATE.slideshow.currentIndex];
+    if (item && item.src === targetSrc) {
+      const hudFav = document.getElementById('hud-fav-btn');
+      if (hudFav) {
+        const isFav = STATE.favoritesSet.has(targetSrc);
+        hudFav.classList.toggle('active', isFav);
+        hudFav.classList.toggle('hud-btn-danger', isFav);
+        hudFav.innerHTML = isFav ? ICONS.heartFilled : ICONS.heartOutline;
+      }
+    }
+  }
+}
+
+// Theme handling
+function applyTheme(theme) {
+  STATE.theme = theme;
+  localStorage.setItem('PHOTOWALL_THEME', theme);
+  if (theme === 'light') {
+    document.body.classList.add('light-theme');
+  } else {
+    document.body.classList.remove('light-theme');
+  }
+  const themeBtn = document.getElementById('theme-toggle-btn');
+  if (themeBtn) {
+    themeBtn.innerHTML = theme === 'light' ? ICONS.moon : ICONS.sun;
+    themeBtn.title = theme === 'light' ? '切换为深色模式' : '切换为浅色模式';
+  }
+}
+
+function toggleTheme() {
+  applyTheme(STATE.theme === 'light' ? 'dark' : 'light');
+}
+
+
+// ========================================================
+// Filtering Pipeline & Navigation Hierarchy
+// ========================================================
+
+let lastFolderScopeKey = null;
+
+function runFilterPipeline() {
+  const currentScopeKey = `${STATE.isFavoritesView}:${STATE.currentFolder}:${STATE.includeSubfolders}:${STATE.favoritesSet.size}`;
+  const scopeChanged = currentScopeKey !== lastFolderScopeKey;
+
+  // Step 1: Scope filtering & tag frequency caching
+  if (scopeChanged || !STATE.folderScopedItems) {
+    lastFolderScopeKey = currentScopeKey;
+
+    if (STATE.isFavoritesView) {
+      STATE.folderScopedItems = STATE.allItems.filter(it => STATE.favoritesSet.has(it.src));
+    } else {
+      if (STATE.currentFolder === '') {
+        // Root folder
+        STATE.folderScopedItems = STATE.includeSubfolders
+          ? STATE.allItems
+          : STATE.allItems.filter(it => it.folder === '');
+      } else {
+        const prefix = STATE.currentFolder + '/';
+        STATE.folderScopedItems = STATE.includeSubfolders
+          ? STATE.allItems.filter(it => it.folder === STATE.currentFolder || (it.folder && it.folder.startsWith(prefix)))
+          : STATE.allItems.filter(it => it.folder === STATE.currentFolder);
+      }
+    }
+
+    // Step 2: Dynamic recalculation of tag frequencies in current folder scope (single-pass)
+    const tagCounts = {};
+    const scoped = STATE.folderScopedItems;
+    for (let i = 0; i < scoped.length; i++) {
+      const it = scoped[i];
+      if (it.tags) {
+        for (let j = 0; j < it.tags.length; j++) {
+          const t = it.tags[j];
+          tagCounts[t] = (tagCounts[t] || 0) + 1;
+        }
+      }
+    }
+    STATE._cachedTagCounts = tagCounts;
+
+    // Clean selectedTags that no longer exist in current scope
+    for (const t of STATE.selectedTags) {
+      if (!tagCounts[t]) {
+        STATE.selectedTags.delete(t);
+      }
+    }
+
+    STATE._cachedSortedTags = Object.entries(tagCounts).sort((a, b) => {
+      if (b[1] !== a[1]) return b[1] - a[1];
+      return naturalCompare(String(a[0]), String(b[0]));
+    });
+
+    // Render navigation components when scope changes
+    renderBreadcrumbs();
+    renderSubfolders();
+    renderDirectoryTree();
+  }
+
+  // Dynamic tag capsules bar
+  renderTagsBar(STATE.folderScopedItems);
+
+  // Step 3: Media type filter (skip allocation if 'all')
+  let results;
+  if (STATE.mediaType === 'all') {
+    results = STATE.folderScopedItems;
+  } else {
+    results = STATE.folderScopedItems.filter(it => {
+      const isGif = it.ext === 'gif' || it.ext === '.gif' || (it.name && it.name.toLowerCase().endsWith('.gif'));
+      if (STATE.mediaType === 'gif') return isGif;
+      if (STATE.mediaType === 'video') return it.type === 'video';
+      if (STATE.mediaType === 'image') return it.type === 'image' && !isGif;
+      return true;
+    });
+  }
+
+  // Step 4: Selected tag intersection (every)
+  if (STATE.selectedTags.size > 0) {
+    const activeTagsArr = Array.from(STATE.selectedTags);
+    results = results.filter(it => {
+      if (!it.tags || !Array.isArray(it.tags)) return false;
+      return activeTagsArr.every(tag => it.tags.includes(tag));
+    });
+  }
+
+  // Step 5: Keyword fuzzy search (optimized short-circuiting)
+  if (STATE.searchKeyword.trim() !== '') {
+    const q = STATE.searchKeyword.trim().toLowerCase();
+    results = results.filter(it => {
+      if (it.name && it.name.toLowerCase().includes(q)) return true;
+      if (it.folder && it.folder.toLowerCase().includes(q)) return true;
+      if (it.src && it.src.toLowerCase().includes(q)) return true;
+      if (it.src && it.src.indexOf('%') !== -1) {
+        try {
+          if (decodeURIComponent(it.src).toLowerCase().includes(q)) return true;
+        } catch (e) {}
+      }
+      if (it.tags) {
+        for (const t of it.tags) {
+          if (String(t || '').toLowerCase().includes(q)) return true;
+        }
+      }
+      return false;
+    });
+  }
+
+  // Step 6: Sorting (skip sort if default since subset maintains monotonic ID order)
+  if (STATE.sortBy !== 'default') {
+    results = results.slice();
+    results.sort((a, b) => {
+      switch (STATE.sortBy) {
+        case 'time-desc':
+          return (b.mtime || 0) - (a.mtime || 0);
+        case 'time-asc':
+          return (a.mtime || 0) - (b.mtime || 0);
+        case 'size-desc':
+          return (b.size || 0) - (a.size || 0);
+        case 'size-asc':
+          return (a.size || 0) - (b.size || 0);
+        case 'name-asc':
+          return naturalCompare(String(a.name || ''), String(b.name || ''));
+        default:
+          return (a.id || 0) - (b.id || 0);
+      }
+    });
+  }
+
+  STATE.filteredItems = results;
+
+  // Update UI indicators
+  const countEl = document.getElementById('results-count-text');
+  if (countEl) {
+    countEl.textContent = `共 ${results.length} 项`;
+  }
+
+  // Reset and batch render the grid
+  resetAndRenderGrid();
+}
+
+// Render dynamic tag capsules
+function renderTagsBar(scopedItems) {
+  const container = document.getElementById('tags-bar-container');
+  if (!container) return;
+
+  const items = scopedItems || STATE.folderScopedItems || [];
+  let sortedTags = STATE._cachedSortedTags;
+  let tagCounts = STATE._cachedTagCounts;
+
+  if (!sortedTags || (scopedItems && scopedItems !== STATE.folderScopedItems)) {
+    tagCounts = {};
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (it.tags) {
+        for (let j = 0; j < it.tags.length; j++) {
+          const t = it.tags[j];
+          tagCounts[t] = (tagCounts[t] || 0) + 1;
+        }
+      }
+    }
+    sortedTags = Object.entries(tagCounts).sort((a, b) => {
+      if (b[1] !== a[1]) return b[1] - a[1];
+      return naturalCompare(String(a[0]), String(b[0]));
+    });
+  }
+
+  container.innerHTML = '';
+
+  if (!sortedTags || sortedTags.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'flex';
+
+  const fragment = document.createDocumentFragment();
+
+  // "All" capsule
+  const allCapsule = document.createElement('button');
+  allCapsule.className = `tag-capsule ${STATE.selectedTags.size === 0 ? 'active' : ''}`;
+  allCapsule.innerHTML = `<span>全部标签</span> <span class="tag-badge">${items.length}</span>`;
+  allCapsule.onclick = () => {
+    STATE.selectedTags.clear();
+    runFilterPipeline();
+  };
+  fragment.appendChild(allCapsule);
+
+  // Render top tags, ensuring any currently selected tag is ALWAYS included
+  const displayTags = sortedTags.slice(0, 60);
+  const displayedTagNames = new Set(displayTags.map(([t]) => t));
+  for (const selTag of STATE.selectedTags) {
+    if (!displayedTagNames.has(selTag) && tagCounts && tagCounts[selTag] !== undefined) {
+      displayTags.push([selTag, tagCounts[selTag]]);
+    }
+  }
+
+  for (let i = 0; i < displayTags.length; i++) {
+    const [tag, count] = displayTags[i];
+    const isSelected = STATE.selectedTags.has(tag);
+    const capsule = document.createElement('button');
+    capsule.className = `tag-capsule ${isSelected ? 'active' : ''}`;
+    capsule.innerHTML = `<span>${tag}</span> <span class="tag-badge">${count}</span>`;
+    capsule.onclick = () => {
+      if (STATE.selectedTags.has(tag)) {
+        STATE.selectedTags.delete(tag);
+      } else {
+        STATE.selectedTags.add(tag);
+      }
+      runFilterPipeline();
+    };
+    fragment.appendChild(capsule);
+  }
+
+  container.appendChild(fragment);
+}
+
+// Render Breadcrumbs
+function renderBreadcrumbs() {
+  const container = document.getElementById('breadcrumbs-bar');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (STATE.isFavoritesView) {
+    const favItem = document.createElement('span');
+    favItem.className = 'breadcrumb-item active';
+    favItem.innerHTML = `${ICONS.heartFilled} 我的收藏`;
+    container.appendChild(favItem);
+    return;
+  }
+
+  // Root item
+  const rootItem = document.createElement('span');
+  rootItem.className = `breadcrumb-item ${STATE.currentFolder === '' ? 'active' : ''}`;
+  rootItem.innerHTML = `${ICONS.folder} 根目录`;
+  rootItem.onclick = () => {
+    if (STATE.currentFolder !== '') {
+      selectFolder('');
+    }
+  };
+  container.appendChild(rootItem);
+
+  if (STATE.currentFolder !== '') {
+    const parts = STATE.currentFolder.split('/');
+    let currentPathAcc = '';
+    parts.forEach((part, idx) => {
+      currentPathAcc = currentPathAcc ? `${currentPathAcc}/${part}` : part;
+      const isLast = idx === parts.length - 1;
+
+      const sep = document.createElement('span');
+      sep.className = 'breadcrumb-separator';
+      sep.innerHTML = ICONS.chevronRight;
+      container.appendChild(sep);
+
+      const partItem = document.createElement('span');
+      partItem.className = `breadcrumb-item ${isLast ? 'active' : ''}`;
+      partItem.textContent = part;
+      const targetPath = currentPathAcc;
+      if (!isLast) {
+        partItem.onclick = () => selectFolder(targetPath);
+      }
+      container.appendChild(partItem);
+    });
+  }
+}
+
+// Render Subfolders Horizontal Cards
+function renderSubfolders() {
+  const section = document.getElementById('subfolders-section');
+  const list = document.getElementById('subfolders-list');
+  if (!section || !list) return;
+
+  if (STATE.isFavoritesView) {
+    section.style.display = 'none';
+    return;
+  }
+
+  // Find direct subfolders: f.parent === STATE.currentFolder (or parent === null/'' for root)
+  const currentF = STATE.currentFolder;
+  const subfolders = STATE.allFolders.filter(f => {
+    if (currentF === '') {
+      return f.path !== '' && (f.parent === '' || f.parent === null);
+    }
+    return f.parent === currentF;
+  });
+
+  if (subfolders.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'flex';
+  list.innerHTML = '';
+  const fragment = document.createDocumentFragment();
+
+  subfolders.forEach(folder => {
+    const card = document.createElement('div');
+    card.className = 'subfolder-card';
+    card.onclick = () => selectFolder(folder.path);
+
+    const countDisplay = STATE.includeSubfolders ? folder.totalCount : folder.directCount;
+
+    let coverHtml = '';
+    if (folder.cover) {
+      coverHtml = `<img src="${folder.cover}" alt="${folder.name}" loading="lazy" onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='flex';" /><div class="subfolder-cover-fallback" style="display:none;">${ICONS.folder}</div>`;
+    } else {
+      coverHtml = `<div class="subfolder-cover-fallback">${ICONS.folder}</div>`;
+    }
+
+    card.innerHTML = `
+      <div class="subfolder-cover">${coverHtml}</div>
+      <div class="subfolder-info">
+        <div class="subfolder-name" title="${folder.name}">${folder.name}</div>
+        <div class="subfolder-count">${countDisplay} 项媒体</div>
+      </div>
+    `;
+    fragment.appendChild(card);
+  });
+  list.appendChild(fragment);
+}
+
+// Render Sidebar Directory Tree
+function renderDirectoryTree() {
+  const container = document.getElementById('tree-container');
+  if (!container) return;
+  container.innerHTML = '';
+  const fragment = document.createDocumentFragment();
+
+  // Sort folders
+  const folders = [...STATE.allFolders];
+
+  folders.forEach(folder => {
+    // If root or any ancestor is collapsed, do not render this node
+    if (folder.path !== '') {
+      if (STATE.collapsedFolders.has('')) {
+        return;
+      }
+      const parts = folder.path.split('/');
+      let checkAcc = '';
+      let isHidden = false;
+      for (let i = 0; i < parts.length - 1; i++) {
+        checkAcc = checkAcc ? `${checkAcc}/${parts[i]}` : parts[i];
+        if (STATE.collapsedFolders.has(checkAcc)) {
+          isHidden = true;
+          break;
+        }
+      }
+      if (isHidden) return;
+    }
+
+    const hasChildren = folder.subFolderCount > 0;
+    const isCollapsed = STATE.collapsedFolders.has(folder.path);
+    const isSelected = !STATE.isFavoritesView && STATE.currentFolder === folder.path;
+    const depth = folder.depth || 0;
+    const count = STATE.includeSubfolders ? folder.totalCount : folder.directCount;
+
+    const node = document.createElement('div');
+    node.className = `tree-node ${isSelected ? 'active' : ''}`;
+    node.style.paddingLeft = `${depth * 16 + 12}px`;
+
+    // Toggle arrow
+    const arrow = document.createElement('span');
+    arrow.className = `tree-toggle-arrow ${hasChildren ? (isCollapsed ? '' : 'expanded') : 'empty'}`;
+    arrow.innerHTML = ICONS.chevronRight;
+    if (hasChildren) {
+      arrow.onclick = (e) => {
+        e.stopPropagation();
+        if (isCollapsed) {
+          STATE.collapsedFolders.delete(folder.path);
+        } else {
+          STATE.collapsedFolders.add(folder.path);
+        }
+        renderDirectoryTree();
+      };
+    }
+
+    // Node content
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'tree-node-icon';
+    iconSpan.innerHTML = isSelected ? ICONS.folderOpen : ICONS.folder;
+
+    const textSpan = document.createElement('span');
+    textSpan.className = 'tree-node-text';
+    textSpan.textContent = folder.name;
+    textSpan.title = folder.name;
+
+    const countSpan = document.createElement('span');
+    countSpan.className = 'tree-node-count';
+    countSpan.textContent = count;
+
+    node.appendChild(arrow);
+    node.appendChild(iconSpan);
+    node.appendChild(textSpan);
+    node.appendChild(countSpan);
+
+    node.onclick = () => selectFolder(folder.path);
+
+    fragment.appendChild(node);
+  });
+  container.appendChild(fragment);
+}
+
+function selectFolder(path) {
+  STATE.isFavoritesView = false;
+  STATE.currentFolder = path;
+
+  // If path is inside collapsed folders, expand them so the selected node is visible
+  if (path) {
+    const parts = path.split('/');
+    let acc = '';
+    STATE.collapsedFolders.delete('');
+    for (let i = 0; i < parts.length - 1; i++) {
+      acc = acc ? `${acc}/${parts[i]}` : parts[i];
+      STATE.collapsedFolders.delete(acc);
+    }
+  }
+
+  // Update nav buttons
+  document.getElementById('nav-all-btn')?.classList.toggle('active', path === '');
+  document.getElementById('nav-fav-btn')?.classList.remove('active');
+
+  runFilterPipeline();
+}
+
+function selectFavorites() {
+  STATE.isFavoritesView = true;
+  document.getElementById('nav-all-btn')?.classList.remove('active');
+  document.getElementById('nav-fav-btn')?.classList.add('active');
+
+  runFilterPipeline();
+}
+
+
+// ========================================================
+// Media Grid & Batched Incremental Rendering
+// ========================================================
+
+let sentinelObserver = null;
+
+function resetAndRenderGrid() {
+  const container = document.getElementById('media-container');
+  if (!container) return;
+
+  container.querySelectorAll('video').forEach(v => {
+    try {
+      v.pause();
+      v.src = '';
+      v.load();
+    } catch (e) {}
+  });
+  container.innerHTML = '';
+  STATE.renderedCount = 0;
+
+  if (STATE.filteredItems.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'grid-empty-state';
+    empty.innerHTML = `
+      <div class="grid-empty-icon">${ICONS.search}</div>
+      <div style="font-size: 1rem; font-weight: 600;">未找到匹配的媒体</div>
+      <div style="font-size: 0.825rem;">请尝试调整筛选条件、清除搜索关键词或切换目录</div>
+    `;
+    container.appendChild(empty);
+    document.getElementById('sentinel-spinner').style.display = 'none';
+    return;
+  }
+
+  // Render initial batch
+  renderNextBatch();
+  initSentinelObserver();
+}
+
+function renderNextBatch() {
+  const container = document.getElementById('media-container');
+  if (!container) return;
+
+  const total = STATE.filteredItems.length;
+  if (STATE.renderedCount >= total) {
+    document.getElementById('sentinel-spinner').style.display = 'none';
+    return;
+  }
+
+  const nextCount = Math.min(STATE.renderedCount + STATE.BATCH_SIZE, total);
+  const itemsToRender = STATE.filteredItems.slice(STATE.renderedCount, nextCount);
+
+  const fragment = document.createDocumentFragment();
+
+  itemsToRender.forEach((item, batchIdx) => {
+    const globalIdx = STATE.renderedCount + batchIdx;
+    const card = createMediaCard(item, globalIdx);
+    fragment.appendChild(card);
+  });
+
+  container.appendChild(fragment);
+  STATE.renderedCount = nextCount;
+
+  if (STATE.renderedCount >= total) {
+    document.getElementById('sentinel-spinner').style.display = 'none';
+  } else {
+    document.getElementById('sentinel-spinner').style.display = 'block';
+  }
+}
+
+function createMediaCard(item, index) {
+  const card = document.createElement('div');
+  card.className = 'media-card';
+  card.dataset.index = index;
+  card.dataset.id = item.id;
+
+  // Zero-CLS aspect ratio preset
+  const w = item.width || 4;
+  const h = item.height || 3;
+  card.style.aspectRatio = `${w} / ${h}`;
+
+  const isFav = STATE.favoritesSet.has(item.src);
+  const isGif = item.ext === 'gif' || item.ext === '.gif' || (item.name && item.name.toLowerCase().endsWith('.gif'));
+  const isVideo = item.type === 'video';
+  const is4K = (item.width >= 3840 || item.height >= 2160);
+
+  // Top-left badges
+  let badgeHtml = '';
+  if (isGif) {
+    badgeHtml += `<span class="badge-tag badge-gif">GIF</span>`;
+  } else if (isVideo) {
+    badgeHtml += `<span class="badge-tag badge-video">VIDEO</span>`;
+  } else if (is4K) {
+    badgeHtml += `<span class="badge-tag badge-4k">4K</span>`;
+  }
+
+  // Video duration badge
+  let durationHtml = '';
+  if (isVideo && item.duration > 0) {
+    durationHtml = `<div class="card-duration-badge">${formatDuration(item.duration)}</div>`;
+  }
+
+  // Tags for hover overlay (first 3)
+  const topTags = (item.tags || []).slice(0, 3);
+  const tagsHtml = topTags.map(t => `<span class="overlay-tag">${t}</span>`).join('');
+
+  // Media element
+  let mediaHtml = '';
+  if (isVideo) {
+    mediaHtml = `
+      <video
+        src="${item.src}#t=0.5"
+        preload="metadata"
+        muted
+        playsinline
+        loop
+      ></video>
+    `;
+  } else {
+    mediaHtml = `
+      <img
+        src="${item.src}"
+        alt="${item.name}"
+        loading="lazy"
+        decoding="async"
+      />
+    `;
+  }
+
+  card.innerHTML = `
+    <div class="media-thumbnail-wrapper">
+      ${mediaHtml}
+      ${badgeHtml ? `<div class="card-badge-top-left">${badgeHtml}</div>` : ''}
+      <button
+        class="card-fav-btn ${isFav ? 'active' : ''}"
+        data-src="${item.src}"
+        title="${isFav ? '取消收藏' : '添加收藏'}"
+      >
+        ${isFav ? ICONS.heartFilled : ICONS.heartOutline}
+      </button>
+      ${durationHtml}
+      <div class="card-hover-overlay">
+        <div class="overlay-filename" title="${item.name}">${item.name}</div>
+        <div class="overlay-meta">
+          <span>${item.width ? `${item.width} × ${item.height}` : (isVideo ? '视频媒体' : '图片')}</span>
+          <span>${formatBytes(item.size)}</span>
+        </div>
+        ${tagsHtml ? `<div class="overlay-tags">${tagsHtml}</div>` : ''}
+      </div>
+    </div>
+  `;
+
+  // Favorite button click handler
+  const favBtn = card.querySelector('.card-fav-btn');
+  favBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleFavorite(item.src);
+  });
+
+  // Video hover 300ms preview
+  if (isVideo) {
+    const videoEl = card.querySelector('video');
+    let hoverTimer = null;
+    card.addEventListener('mouseenter', () => {
+      hoverTimer = setTimeout(() => {
+        if (videoEl) {
+          videoEl.play().catch(() => {});
+        }
+      }, 300);
+    });
+    card.addEventListener('mouseleave', () => {
+      if (hoverTimer) {
+        clearTimeout(hoverTimer);
+        hoverTimer = null;
+      }
+      if (videoEl) {
+        videoEl.pause();
+        if (videoEl.readyState >= 1) {
+          try { videoEl.currentTime = 0.5; } catch (e) {}
+        }
+      }
+    });
+  }
+
+  // Card click: open Lightbox
+  card.addEventListener('click', () => {
+    openLightbox(index);
+  });
+
+  return card;
+}
+
+// Sentinel IntersectionObserver for batch rendering
+function initSentinelObserver() {
+  if (sentinelObserver) {
+    sentinelObserver.disconnect();
+  }
+
+  const sentinel = document.getElementById('scroll-sentinel');
+  if (!sentinel) return;
+
+  sentinelObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+      if (STATE.renderedCount < STATE.filteredItems.length) {
+        renderNextBatch();
+      }
+    }
+  }, {
+    rootMargin: '400px 0px',
+    threshold: 0.01
+  });
+
+  sentinelObserver.observe(sentinel);
+}
+
+// Layout Mode and Slider
+function setLayoutMode(mode) {
+  STATE.layoutMode = mode;
+  const container = document.getElementById('media-container');
+  if (!container) return;
+
+  container.classList.remove('mode-masonry', 'mode-grid', 'mode-square');
+  container.classList.add(`mode-${mode}`);
+
+  document.getElementById('view-mode-masonry')?.classList.toggle('active', mode === 'masonry');
+  document.getElementById('view-mode-grid')?.classList.toggle('active', mode === 'grid');
+  document.getElementById('view-mode-square')?.classList.toggle('active', mode === 'square');
+}
+
+function setCardWidth(width) {
+  STATE.cardMinWidth = width;
+  document.documentElement.style.setProperty('--card-min-width', `${width}px`);
+}
+
+
+// ========================================================
+// Professional Lightbox Modal
+// ========================================================
+
+function openLightbox(index) {
+  if (!STATE.filteredItems || STATE.filteredItems.length === 0) return;
+  if (index < 0) index = 0;
+  if (index >= STATE.filteredItems.length) index = STATE.filteredItems.length - 1;
+
+  STATE.lightbox.isOpen = true;
+  STATE.lightbox.currentIndex = index;
+  resetLightboxTransform();
+
+  const modal = document.getElementById('lightbox-modal');
+  modal.classList.add('active');
+  modal.focus();
+
+  renderLightboxCurrentItem();
+}
+
+function closeLightbox() {
+  STATE.lightbox.isOpen = false;
+  STATE.lightbox.isDragging = false;
+  document.getElementById('lightbox-viewport')?.classList.remove('panning');
+
+  const modal = document.getElementById('lightbox-modal');
+  modal.classList.remove('active');
+
+  const wrapper = document.getElementById('lightbox-media-wrapper');
+  if (wrapper) {
+    const v = wrapper.querySelector('video');
+    if (v) {
+      v.pause();
+      v.src = '';
+    }
+    wrapper.innerHTML = '';
+  }
+}
+
+function resetLightboxTransform() {
+  STATE.lightbox.zoomScale = 1;
+  STATE.lightbox.translateX = 0;
+  STATE.lightbox.translateY = 0;
+  STATE.lightbox.rotation = 0;
+  applyLightboxTransform();
+}
+
+function applyLightboxTransform() {
+  const wrapper = document.getElementById('lightbox-media-wrapper');
+  if (!wrapper) return;
+  const { zoomScale, translateX, translateY, rotation } = STATE.lightbox;
+  wrapper.style.transform = `translate(${translateX}px, ${translateY}px) scale(${zoomScale}) rotate(${rotation}deg)`;
+}
+
+function renderLightboxCurrentItem() {
+  const item = STATE.filteredItems[STATE.lightbox.currentIndex];
+  if (!item) return;
+
+  const total = STATE.filteredItems.length;
+  const currentIdx = STATE.lightbox.currentIndex;
+
+  // Header info
+  document.getElementById('lightbox-counter').textContent = `${currentIdx + 1} / ${total}`;
+  document.getElementById('lightbox-title').textContent = item.name;
+
+  // Favorite button
+  const isFav = STATE.favoritesSet.has(item.src);
+  const favBtn = document.getElementById('lightbox-fav-btn');
+  favBtn.classList.toggle('active', isFav);
+  favBtn.classList.toggle('lightbox-btn-danger', isFav);
+  favBtn.innerHTML = (isFav ? ICONS.heartFilled : ICONS.heartOutline) + ` <span>${isFav ? '已收藏' : '收藏'}</span>`;
+
+  // Media render
+  const wrapper = document.getElementById('lightbox-media-wrapper');
+  if (wrapper) {
+    const v = wrapper.querySelector('video');
+    if (v) {
+      v.pause();
+      v.src = '';
+    }
+    wrapper.innerHTML = '';
+  }
+
+  if (item.type === 'video') {
+    const video = document.createElement('video');
+    video.src = item.src;
+    video.controls = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    wrapper.appendChild(video);
+  } else {
+    const img = document.createElement('img');
+    img.src = item.src;
+    img.alt = item.name;
+    img.draggable = false;
+    wrapper.appendChild(img);
+  }
+
+  // Preload next and prev images
+  preloadAdjacentImages();
+
+  // Update Drawer info
+  updateLightboxDrawer(item);
+}
+
+function preloadAdjacentImages() {
+  const total = STATE.filteredItems.length;
+  if (total <= 1) return;
+  const currentIdx = STATE.lightbox.currentIndex;
+
+  const nextIdx = (currentIdx + 1) % total;
+  const prevIdx = (currentIdx - 1 + total) % total;
+  const indices = nextIdx === prevIdx ? [nextIdx] : [nextIdx, prevIdx];
+
+  indices.forEach(idx => {
+    const it = STATE.filteredItems[idx];
+    if (it && it.type === 'image') {
+      const preloadImg = new Image();
+      preloadImg.src = it.src;
+    }
+  });
+}
+
+function updateLightboxDrawer(item) {
+  document.getElementById('drawer-filename').textContent = item.name;
+
+  const folderEl = document.getElementById('drawer-folder');
+  folderEl.textContent = item.folder || '根目录';
+  folderEl.className = 'drawer-value drawer-folder-link';
+  folderEl.onclick = () => {
+    closeLightbox();
+    selectFolder(item.folder || '');
+  };
+
+  const dimEl = document.getElementById('drawer-dimensions');
+  if (item.width && item.height) {
+    dimEl.textContent = `${item.width} × ${item.height} 像素`;
+  } else if (item.type === 'video') {
+    dimEl.textContent = `视频时长: ${formatDuration(item.duration)}`;
+  } else {
+    dimEl.textContent = '-';
+  }
+
+  document.getElementById('drawer-size').textContent = formatBytes(item.size);
+  document.getElementById('drawer-date').textContent = formatDate(item.mtime);
+
+  // Tags
+  const tagsContainer = document.getElementById('drawer-tags');
+  tagsContainer.innerHTML = '';
+  if (item.tags && item.tags.length > 0) {
+    item.tags.forEach(tag => {
+      const pill = document.createElement('span');
+      pill.className = 'drawer-tag-pill';
+      pill.textContent = tag;
+      pill.onclick = () => {
+        closeLightbox();
+        STATE.selectedTags.clear();
+        STATE.selectedTags.add(tag);
+        runFilterPipeline();
+        showToast(`已按标签 "${tag}" 过滤`, 'info');
+      };
+      tagsContainer.appendChild(pill);
+    });
+  } else {
+    tagsContainer.innerHTML = '<span style="font-size:0.8rem;color:var(--text-muted);">暂无标签</span>';
+  }
+}
+
+function lightboxPrev() {
+  if (!STATE.lightbox.isOpen) return;
+  if (STATE.filteredItems.length <= 1) return;
+  STATE.lightbox.currentIndex = (STATE.lightbox.currentIndex - 1 + STATE.filteredItems.length) % STATE.filteredItems.length;
+  resetLightboxTransform();
+  renderLightboxCurrentItem();
+}
+
+function lightboxNext() {
+  if (!STATE.lightbox.isOpen) return;
+  if (STATE.filteredItems.length <= 1) return;
+  STATE.lightbox.currentIndex = (STATE.lightbox.currentIndex + 1) % STATE.filteredItems.length;
+  resetLightboxTransform();
+  renderLightboxCurrentItem();
+}
+
+function toggleLightboxDrawer() {
+  const drawer = document.getElementById('lightbox-drawer');
+  const infoBtn = document.getElementById('lightbox-info-btn');
+  STATE.lightbox.isDrawerOpen = !STATE.lightbox.isDrawerOpen;
+  drawer.classList.toggle('collapsed', !STATE.lightbox.isDrawerOpen);
+  infoBtn.classList.toggle('active', STATE.lightbox.isDrawerOpen);
+}
+
+function rotateLightbox() {
+  const item = STATE.filteredItems[STATE.lightbox.currentIndex];
+  if (!item || item.type !== 'image') return;
+  STATE.lightbox.rotation = (STATE.lightbox.rotation + 90) % 360;
+  applyLightboxTransform();
+}
+
+function zoomLightbox(factor) {
+  const item = STATE.filteredItems[STATE.lightbox.currentIndex];
+  if (!item || item.type !== 'image') return;
+  let newScale = STATE.lightbox.zoomScale * factor;
+  if (newScale < 0.5) newScale = 0.5;
+  if (newScale > 6.0) newScale = 6.0;
+  STATE.lightbox.zoomScale = newScale;
+  applyLightboxTransform();
+}
+
+// Lightbox Mouse Interactions (Wheel Zoom, Drag Pan, Double Click 1:1)
+function initLightboxCanvasEvents() {
+  const viewport = document.getElementById('lightbox-viewport');
+  if (!viewport) return;
+
+  // Wheel zoom
+  viewport.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.15 : 0.87;
+    zoomLightbox(factor);
+  }, { passive: false });
+
+  // Pan / Drag
+  viewport.addEventListener('mousedown', (e) => {
+    // Left mouse button only, and image items only
+    if (e.button !== 0) return;
+    const item = STATE.filteredItems[STATE.lightbox.currentIndex];
+    if (!item || item.type !== 'image') return;
+    if (e.target && e.target.tagName === 'VIDEO') return;
+    STATE.lightbox.isDragging = true;
+    STATE.lightbox.startX = e.clientX - STATE.lightbox.translateX;
+    STATE.lightbox.startY = e.clientY - STATE.lightbox.translateY;
+    viewport.classList.add('panning');
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!STATE.lightbox.isDragging || !STATE.lightbox.isOpen) return;
+    STATE.lightbox.translateX = e.clientX - STATE.lightbox.startX;
+    STATE.lightbox.translateY = e.clientY - STATE.lightbox.startY;
+    applyLightboxTransform();
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (STATE.lightbox.isDragging) {
+      STATE.lightbox.isDragging = false;
+      viewport.classList.remove('panning');
+    }
+  });
+
+  // Double Click: Toggle between Fit (1x) and 1:1 Original Pixel
+  viewport.addEventListener('dblclick', (e) => {
+    const item = STATE.filteredItems[STATE.lightbox.currentIndex];
+    if (!item || item.type !== 'image') return;
+
+    if (STATE.lightbox.zoomScale > 1.05) {
+      // Reset to Fit
+      resetLightboxTransform();
+    } else {
+      // Zoom to 1:1 natural pixel
+      const img = document.querySelector('#lightbox-media-wrapper img');
+      STATE.lightbox.translateX = 0;
+      STATE.lightbox.translateY = 0;
+      if (img && img.naturalWidth && img.clientWidth) {
+        const naturalScale = img.naturalWidth / img.clientWidth;
+        STATE.lightbox.zoomScale = Math.min(Math.max(naturalScale, 1.5), 6.0);
+      } else {
+        STATE.lightbox.zoomScale = 2.0;
+      }
+      applyLightboxTransform();
+    }
+  });
+}
+
+
+// ========================================================
+// Immersive Fullscreen Slideshow
+// ========================================================
+
+function startSlideshow(startIndex = 0) {
+  if (!STATE.filteredItems || STATE.filteredItems.length === 0) {
+    showToast('当前筛选列表中没有可放映的媒体', 'warning');
+    return;
+  }
+
+  // If lightbox is open, close it
+  if (STATE.lightbox.isOpen) {
+    closeLightbox();
+  }
+
+  STATE.slideshow.isOpen = true;
+  STATE.slideshow.currentIndex = startIndex >= 0 && startIndex < STATE.filteredItems.length ? startIndex : 0;
+  STATE.slideshow.isPlaying = true;
+
+  const modal = document.getElementById('slideshow-modal');
+  modal.classList.add('active');
+
+  // Request native fullscreen
+  try {
+    if (modal.requestFullscreen) {
+      modal.requestFullscreen().catch(() => {});
+    } else if (modal.webkitRequestFullscreen) {
+      modal.webkitRequestFullscreen().catch(() => {});
+    }
+  } catch (e) {}
+
+  updateSlideshowHudControls();
+  renderSlideshowItem();
+
+  // Reset mouse timer for auto-hiding HUD
+  if (STATE.slideshow.mouseTimer) {
+    clearTimeout(STATE.slideshow.mouseTimer);
+  }
+  STATE.slideshow.mouseTimer = setTimeout(() => {
+    if (STATE.slideshow.isOpen) {
+      modal.classList.add('hud-hidden');
+    }
+  }, 2500);
+}
+
+function stopSlideshow() {
+  STATE.slideshow.isOpen = false;
+  STATE.slideshow.isPlaying = false;
+  clearSlideshowTimers();
+
+  if (STATE.slideshow.mouseTimer) {
+    clearTimeout(STATE.slideshow.mouseTimer);
+    STATE.slideshow.mouseTimer = null;
+  }
+
+  const modal = document.getElementById('slideshow-modal');
+  modal.classList.remove('active', 'hud-hidden');
+
+  // Exit fullscreen if active
+  try {
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen().catch(() => {});
+      }
+    }
+  } catch (e) {}
+
+  const stage = document.getElementById('slideshow-stage');
+  if (stage) {
+    stage.querySelectorAll('video').forEach(v => {
+      v.pause();
+      v.src = '';
+    });
+    stage.innerHTML = '';
+  }
+}
+
+function clearSlideshowTimers() {
+  if (STATE.slideshow.timer) {
+    clearTimeout(STATE.slideshow.timer);
+    STATE.slideshow.timer = null;
+  }
+  if (STATE.slideshow.progressInterval) {
+    clearInterval(STATE.slideshow.progressInterval);
+    STATE.slideshow.progressInterval = null;
+  }
+  const fill = document.getElementById('slideshow-progress-bar-fill');
+  if (fill) fill.style.width = '0%';
+}
+
+function renderSlideshowItem() {
+  if (!STATE.slideshow.isOpen) return;
+  clearSlideshowTimers();
+
+  const total = STATE.filteredItems.length;
+  const currentIdx = STATE.slideshow.currentIndex;
+  const item = STATE.filteredItems[currentIdx];
+  if (!item) return;
+
+  const stage = document.getElementById('slideshow-stage');
+  const counter = document.getElementById('hud-counter');
+  counter.textContent = `${currentIdx + 1} / ${total}`;
+
+  // Update HUD favorite button
+  const isFav = STATE.favoritesSet.has(item.src);
+  const hudFav = document.getElementById('hud-fav-btn');
+  hudFav.classList.toggle('active', isFav);
+  hudFav.classList.toggle('hud-btn-danger', isFav);
+  hudFav.innerHTML = isFav ? ICONS.heartFilled : ICONS.heartOutline;
+
+  // Create new media container
+  const newContainer = document.createElement('div');
+  newContainer.className = 'slideshow-media-container';
+
+  const isVideo = item.type === 'video';
+
+  if (isVideo) {
+    const video = document.createElement('video');
+    video.src = item.src;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.controls = false;
+    newContainer.appendChild(video);
+
+    stage.appendChild(newContainer);
+    // Trigger transition
+    requestAnimationFrame(() => {
+      newContainer.classList.add('current');
+      cleanupOldSlideshowContainers(stage, newContainer);
+    });
+
+    // Intelligent video waiting: pause timer, track video progress, advance when finished
+    const progressBar = document.getElementById('slideshow-progress-bar-fill');
+    video.addEventListener('timeupdate', () => {
+      if (video.duration > 0 && progressBar) {
+        const pct = (video.currentTime / video.duration) * 100;
+        progressBar.style.width = `${pct}%`;
+      }
+    });
+
+    const advanceAfterVideo = () => {
+      if (newContainer.classList.contains('current') && STATE.slideshow.isOpen && STATE.slideshow.isPlaying) {
+        slideshowNext();
+      }
+    };
+
+    const handleVideoError = () => {
+      if (newContainer.classList.contains('current') && STATE.slideshow.isOpen && STATE.slideshow.isPlaying) {
+        showToast(`视频加载失败: ${item.name}`, 'warning');
+        setTimeout(() => {
+          if (newContainer.classList.contains('current') && STATE.slideshow.isOpen && STATE.slideshow.isPlaying) {
+            slideshowNext();
+          }
+        }, 1500);
+      }
+    };
+
+    video.addEventListener('ended', advanceAfterVideo, { once: true });
+    video.addEventListener('error', handleVideoError, { once: true });
+
+    video.play().catch(() => {
+      // Browser autoplay policy blocked unmuted video; try muted autoplay
+      video.muted = true;
+      video.play().catch(() => {
+        // Still cannot play (e.g. format unsupported); fallback to countdown timer so slideshow advances
+        if (STATE.slideshow.isOpen && STATE.slideshow.isPlaying && newContainer.classList.contains('current')) {
+          startImageCountdown();
+        }
+      });
+    });
+  } else {
+    // Image item
+    const img = document.createElement('img');
+    img.src = item.src;
+    img.className = 'kenburns';
+    newContainer.appendChild(img);
+
+    stage.appendChild(newContainer);
+    requestAnimationFrame(() => {
+      newContainer.classList.add('current');
+      cleanupOldSlideshowContainers(stage, newContainer);
+    });
+
+    // Start timer & countdown streamer if playing
+    if (STATE.slideshow.isPlaying) {
+      startImageCountdown();
+    }
+  }
+}
+
+function cleanupOldSlideshowContainers(stage, currentContainer) {
+  const containers = stage.querySelectorAll('.slideshow-media-container');
+  containers.forEach(c => {
+    if (c !== currentContainer) {
+      c.classList.remove('current');
+      const v = c.querySelector('video');
+      if (v) {
+        v.pause();
+        v.src = '';
+      }
+      setTimeout(() => {
+        if (c.parentNode === stage) stage.removeChild(c);
+      }, 900);
+    }
+  });
+}
+
+function startImageCountdown() {
+  if (!STATE.slideshow.isOpen || !STATE.slideshow.isPlaying) return;
+  clearSlideshowTimers();
+
+  const progressBar = document.getElementById('slideshow-progress-bar-fill');
+  const duration = STATE.slideshow.intervalMs;
+  STATE.slideshow.progressStartTime = performance.now();
+
+  STATE.slideshow.progressInterval = setInterval(() => {
+    const elapsed = performance.now() - STATE.slideshow.progressStartTime;
+    const pct = Math.min((elapsed / duration) * 100, 100);
+    if (progressBar) progressBar.style.width = `${pct}%`;
+  }, 50);
+
+  STATE.slideshow.timer = setTimeout(() => {
+    slideshowNext();
+  }, duration);
+}
+
+function slideshowNext() {
+  if (!STATE.slideshow.isOpen) return;
+  const total = STATE.filteredItems.length;
+  if (total <= 0) return;
+  if (total === 1) {
+    renderSlideshowItem();
+    return;
+  }
+
+  if (STATE.slideshow.isShuffle) {
+    let nextIdx = Math.floor(Math.random() * total);
+    if (nextIdx === STATE.slideshow.currentIndex) {
+      nextIdx = (nextIdx + 1) % total;
+    }
+    STATE.slideshow.currentIndex = nextIdx;
+  } else {
+    STATE.slideshow.currentIndex = (STATE.slideshow.currentIndex + 1) % total;
+  }
+
+  renderSlideshowItem();
+}
+
+function slideshowPrev() {
+  if (!STATE.slideshow.isOpen) return;
+  const total = STATE.filteredItems.length;
+  if (total <= 0) return;
+  if (total === 1) {
+    renderSlideshowItem();
+    return;
+  }
+
+  if (STATE.slideshow.isShuffle) {
+    STATE.slideshow.currentIndex = Math.floor(Math.random() * total);
+  } else {
+    STATE.slideshow.currentIndex = (STATE.slideshow.currentIndex - 1 + total) % total;
+  }
+
+  renderSlideshowItem();
+}
+
+function toggleSlideshowPlay() {
+  STATE.slideshow.isPlaying = !STATE.slideshow.isPlaying;
+  updateSlideshowHudControls();
+
+  const currentItem = STATE.filteredItems[STATE.slideshow.currentIndex];
+  if (!currentItem) return;
+
+  if (currentItem.type === 'video') {
+    const video = document.querySelector('#slideshow-stage video');
+    if (video) {
+      if (STATE.slideshow.isPlaying) video.play().catch(() => {});
+      else video.pause();
+    }
+  } else {
+    if (STATE.slideshow.isPlaying) {
+      startImageCountdown();
+    } else {
+      clearSlideshowTimers();
+    }
+  }
+}
+
+function toggleSlideshowMode() {
+  STATE.slideshow.isShuffle = !STATE.slideshow.isShuffle;
+  updateSlideshowHudControls();
+  showToast(STATE.slideshow.isShuffle ? '已切换至随机播放' : '已切换至顺序循环', 'info');
+}
+
+function updateSlideshowHudControls() {
+  const playBtn = document.getElementById('hud-play-btn');
+  if (playBtn) {
+    playBtn.innerHTML = STATE.slideshow.isPlaying ? ICONS.pause : ICONS.play;
+    playBtn.title = STATE.slideshow.isPlaying ? '暂停 (空格 Space)' : '播放 (空格 Space)';
+  }
+
+  const modeBtn = document.getElementById('hud-mode-btn');
+  if (modeBtn) {
+    modeBtn.innerHTML = STATE.slideshow.isShuffle ? ICONS.shuffle : ICONS.loop;
+    modeBtn.title = STATE.slideshow.isShuffle ? '当前模式: 随机播放' : '当前模式: 顺序循环';
+  }
+
+  const subBtn = document.getElementById('hud-subfolder-btn');
+  if (subBtn) {
+    subBtn.innerHTML = ICONS.subfolder;
+    subBtn.classList.toggle('active', STATE.includeSubfolders);
+    subBtn.title = STATE.includeSubfolders ? '包含子目录: 开启' : '包含子目录: 关闭';
+  }
+}
+
+// Auto-hide HUD after 2.5s of mouse inactivity
+function initSlideshowMouseActivity() {
+  const modal = document.getElementById('slideshow-modal');
+  const hud = document.getElementById('slideshow-hud');
+
+  const onMouseMove = () => {
+    if (!STATE.slideshow.isOpen) return;
+    modal.classList.remove('hud-hidden');
+
+    if (STATE.slideshow.mouseTimer) {
+      clearTimeout(STATE.slideshow.mouseTimer);
+    }
+    STATE.slideshow.mouseTimer = setTimeout(() => {
+      if (STATE.slideshow.isOpen) {
+        if (hud && hud.matches(':hover')) {
+          return;
+        }
+        modal.classList.add('hud-hidden');
+      }
+    }, 2500);
+  };
+
+  modal.addEventListener('mousemove', onMouseMove);
+}
+
+
+// ========================================================
+// App Bootstrap & Event Binding
+// ========================================================
+
+function initApp() {
+  // Initialize theme first so both onboarding and main UI respect theme preference
+  applyTheme(STATE.theme);
+
+  // Check uninitialized or empty state
+  const data = window.PHOTO_WALL_DATA;
+  if (!data || !data.items || !Array.isArray(data.items) || data.items.length === 0) {
+    showOnboardingScreen();
+    return;
+  }
+
+  // Hide onboarding, show app
+  document.getElementById('onboarding-overlay').style.display = 'none';
+  document.getElementById('app-root').style.display = 'flex';
+
+  // Populate data
+  STATE.allFolders = data.folders || [];
+  STATE.allItems = data.items || [];
+
+  // Dynamic Title
+  const meta = data.meta || {};
+  const pageTitle = meta.title || 'PhotoWall';
+  document.title = pageTitle;
+  const brandTitleEl = document.getElementById('brand-title');
+  if (brandTitleEl) brandTitleEl.textContent = pageTitle;
+
+  // Sidebar Footer Info
+  document.getElementById('stat-total-size').textContent = formatBytes(meta.totalSize || 0);
+  document.getElementById('stat-media-count').textContent = `${meta.imageCount || 0} 图 · ${meta.videoCount || 0} 视`;
+  document.getElementById('stat-generated-at').textContent = formatDate(meta.generatedAt);
+
+  // Initialize Icons & UI elements
+  injectStaticIcons();
+
+  // Initialize favorites
+  initFavorites();
+
+  // Subfolder switch state
+  const subfolderCb = document.getElementById('subfolder-checkbox');
+  if (subfolderCb) {
+    subfolderCb.checked = STATE.includeSubfolders;
+  }
+
+  // Bind all event listeners
+  bindEvents();
+
+  // Run initial filter pipeline
+  runFilterPipeline();
+}
+
+function showOnboardingScreen() {
+  document.getElementById('app-root').style.display = 'none';
+  const overlay = document.getElementById('onboarding-overlay');
+  overlay.style.display = 'flex';
+
+  const iconBox = document.getElementById('onboarding-icon-box');
+  if (iconBox) iconBox.innerHTML = ICONS.logo;
+
+  const refreshIcon = document.getElementById('onboarding-refresh-icon');
+  if (refreshIcon) refreshIcon.innerHTML = ICONS.refresh;
+
+  document.querySelectorAll('.copy-icon').forEach(el => {
+    el.innerHTML = ICONS.copy;
+  });
+}
+
+function injectStaticIcons() {
+  // Topbar
+  document.getElementById('sidebar-toggle-btn').innerHTML = ICONS.menu;
+  document.getElementById('brand-logo').innerHTML = ICONS.logo;
+  document.getElementById('search-icon-slot').innerHTML = ICONS.search;
+  document.getElementById('search-clear-btn').innerHTML = ICONS.close;
+  document.getElementById('topbar-play-icon').innerHTML = ICONS.play;
+
+  // View modes
+  document.getElementById('view-mode-masonry').innerHTML = ICONS.masonry;
+  document.getElementById('view-mode-grid').innerHTML = ICONS.grid;
+  document.getElementById('view-mode-square').innerHTML = ICONS.square;
+
+  // Nav shortcuts
+  document.getElementById('nav-all-icon').innerHTML = ICONS.allMedia;
+  document.getElementById('nav-fav-icon').innerHTML = ICONS.heartFilled;
+  document.getElementById('nav-all-badge').textContent = STATE.allItems.length;
+
+  // Lightbox
+  document.getElementById('lightbox-close-btn').innerHTML = ICONS.close;
+  document.getElementById('lightbox-prev-btn').innerHTML = ICONS.chevronLeft;
+  document.getElementById('lightbox-next-btn').innerHTML = ICONS.chevronRight;
+  document.getElementById('lightbox-zoom-in-btn').innerHTML = ICONS.zoomIn;
+  document.getElementById('lightbox-zoom-out-btn').innerHTML = ICONS.zoomOut;
+  document.getElementById('lightbox-zoom-reset-btn').innerHTML = ICONS.zoomReset;
+  document.getElementById('lightbox-rotate-btn').innerHTML = ICONS.rotate;
+  document.getElementById('lightbox-info-btn').innerHTML = ICONS.info;
+  document.getElementById('lightbox-play-btn').innerHTML = ICONS.play + ` <span>放映</span>`;
+  document.getElementById('drawer-close-btn').innerHTML = ICONS.close;
+
+  // Slideshow HUD
+  document.getElementById('hud-prev-btn').innerHTML = ICONS.chevronLeft;
+  document.getElementById('hud-next-btn').innerHTML = ICONS.chevronRight;
+  document.getElementById('hud-exit-btn').innerHTML = ICONS.fullscreenExit;
+}
+
+function bindEvents() {
+  // Sidebar toggle
+  document.getElementById('sidebar-toggle-btn').addEventListener('click', () => {
+    const sidebar = document.getElementById('sidebar');
+    STATE.isSidebarCollapsed = !STATE.isSidebarCollapsed;
+    sidebar.classList.toggle('collapsed', STATE.isSidebarCollapsed);
+  });
+
+  // Brand click -> reset to root
+  document.getElementById('brand-link').addEventListener('click', () => {
+    selectFolder('');
+  });
+
+  // Search input & clear with debouncing
+  const searchInput = document.getElementById('search-input');
+  const clearBtn = document.getElementById('search-clear-btn');
+  let searchDebounceTimer = null;
+
+  searchInput.addEventListener('input', (e) => {
+    const val = e.target.value;
+    STATE.searchKeyword = val;
+    clearBtn.style.display = val ? 'flex' : 'none';
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      runFilterPipeline();
+    }, 200);
+  });
+
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      if (searchDebounceTimer) {
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = null;
+      }
+      runFilterPipeline();
+    }
+  });
+
+  clearBtn.addEventListener('click', () => {
+    if (searchDebounceTimer) {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = null;
+    }
+    searchInput.value = '';
+    STATE.searchKeyword = '';
+    clearBtn.style.display = 'none';
+    searchInput.focus();
+    runFilterPipeline();
+  });
+
+  // Subfolder switch checkbox
+  document.getElementById('subfolder-checkbox').addEventListener('change', (e) => {
+    STATE.includeSubfolders = e.target.checked;
+    localStorage.setItem('PHOTOWALL_INCLUDE_SUBFOLDERS', String(STATE.includeSubfolders));
+    runFilterPipeline();
+  });
+
+  // Topbar Slideshow button
+  document.getElementById('topbar-slideshow-btn').addEventListener('click', () => {
+    startSlideshow(0);
+  });
+
+  // Layout View mode buttons
+  document.getElementById('view-mode-masonry').addEventListener('click', () => setLayoutMode('masonry'));
+  document.getElementById('view-mode-grid').addEventListener('click', () => setLayoutMode('grid'));
+  document.getElementById('view-mode-square').addEventListener('click', () => setLayoutMode('square'));
+
+  // Card width slider
+  const slider = document.getElementById('card-width-slider');
+  slider.addEventListener('input', (e) => {
+    setCardWidth(e.target.value);
+  });
+
+  // Theme toggle
+  document.getElementById('theme-toggle-btn').addEventListener('click', toggleTheme);
+
+  // Sidebar Nav Shortcuts
+  document.getElementById('nav-all-btn').addEventListener('click', () => selectFolder(''));
+  document.getElementById('nav-fav-btn').addEventListener('click', selectFavorites);
+
+  // Media type filter buttons
+  document.querySelectorAll('.type-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.type-filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      STATE.mediaType = btn.dataset.type;
+      runFilterPipeline();
+    });
+  });
+
+  // Sort dropdown
+  document.getElementById('sort-select').addEventListener('change', (e) => {
+    STATE.sortBy = e.target.value;
+    runFilterPipeline();
+  });
+
+  // Lightbox Header & Nav buttons
+  document.getElementById('lightbox-close-btn').addEventListener('click', closeLightbox);
+  document.getElementById('lightbox-prev-btn').addEventListener('click', lightboxPrev);
+  document.getElementById('lightbox-next-btn').addEventListener('click', lightboxNext);
+  document.getElementById('lightbox-zoom-in-btn').addEventListener('click', () => zoomLightbox(1.25));
+  document.getElementById('lightbox-zoom-out-btn').addEventListener('click', () => zoomLightbox(0.8));
+  document.getElementById('lightbox-zoom-reset-btn').addEventListener('click', resetLightboxTransform);
+  document.getElementById('lightbox-rotate-btn').addEventListener('click', rotateLightbox);
+  document.getElementById('lightbox-info-btn').addEventListener('click', toggleLightboxDrawer);
+  document.getElementById('drawer-close-btn').addEventListener('click', toggleLightboxDrawer);
+
+  document.getElementById('lightbox-fav-btn').addEventListener('click', () => {
+    const item = STATE.filteredItems[STATE.lightbox.currentIndex];
+    if (item) toggleFavorite(item.src);
+  });
+
+  document.getElementById('lightbox-play-btn').addEventListener('click', () => {
+    startSlideshow(STATE.lightbox.currentIndex);
+  });
+
+  // Initialize Lightbox canvas drag / wheel / dblclick
+  initLightboxCanvasEvents();
+
+  // Slideshow HUD Controls
+  document.getElementById('hud-prev-btn').addEventListener('click', slideshowPrev);
+  document.getElementById('hud-next-btn').addEventListener('click', slideshowNext);
+  document.getElementById('hud-play-btn').addEventListener('click', toggleSlideshowPlay);
+  document.getElementById('hud-mode-btn').addEventListener('click', toggleSlideshowMode);
+  document.getElementById('hud-exit-btn').addEventListener('click', stopSlideshow);
+
+  document.getElementById('hud-interval-select').addEventListener('change', (e) => {
+    STATE.slideshow.intervalMs = parseInt(e.target.value, 10) || 5000;
+    const currentItem = STATE.filteredItems[STATE.slideshow.currentIndex];
+    if (STATE.slideshow.isPlaying && currentItem && currentItem.type !== 'video') {
+      startImageCountdown();
+    }
+  });
+
+  document.getElementById('hud-fav-btn').addEventListener('click', () => {
+    const item = STATE.filteredItems[STATE.slideshow.currentIndex];
+    if (item) toggleFavorite(item.src);
+  });
+
+  const hudSubfolderBtn = document.getElementById('hud-subfolder-btn');
+  if (hudSubfolderBtn) {
+    hudSubfolderBtn.addEventListener('click', () => {
+      STATE.includeSubfolders = !STATE.includeSubfolders;
+      localStorage.setItem('PHOTOWALL_INCLUDE_SUBFOLDERS', String(STATE.includeSubfolders));
+      const subCb = document.getElementById('subfolder-checkbox');
+      if (subCb) subCb.checked = STATE.includeSubfolders;
+      hudSubfolderBtn.classList.toggle('active', STATE.includeSubfolders);
+      hudSubfolderBtn.title = STATE.includeSubfolders ? '包含子目录: 开启' : '包含子目录: 关闭';
+      runFilterPipeline();
+      if (STATE.filteredItems.length === 0) {
+        stopSlideshow();
+        showToast('当前目录下无媒体，已退出放映', 'info');
+        return;
+      }
+      if (STATE.slideshow.currentIndex >= STATE.filteredItems.length) {
+        STATE.slideshow.currentIndex = Math.max(0, STATE.filteredItems.length - 1);
+      }
+      renderSlideshowItem();
+      showToast(STATE.includeSubfolders ? '幻灯片：已开启包含子目录' : '幻灯片：已关闭包含子目录', 'info');
+    });
+  }
+
+  // Initialize slideshow mouse activity tracking once
+  initSlideshowMouseActivity();
+
+  // Fullscreen exit change listener
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement && STATE.slideshow.isOpen) {
+      stopSlideshow();
+    }
+  });
+  document.addEventListener('webkitfullscreenchange', () => {
+    if (!document.webkitFullscreenElement && STATE.slideshow.isOpen) {
+      stopSlideshow();
+    }
+  });
+
+  // Global Keyboard Shortcuts
+  window.addEventListener('keydown', (e) => {
+    // If typing in input, select or textarea, ignore global shortcuts except Escape
+    if (document.activeElement && ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+      if (e.key === 'Escape') {
+        document.activeElement.blur();
+      }
+      return;
+    }
+
+    // 1. Slideshow mode shortcuts
+    if (STATE.slideshow.isOpen) {
+      if (e.key === 'Escape') {
+        stopSlideshow();
+        e.preventDefault();
+      } else if (e.key === ' ' || e.code === 'Space') {
+        toggleSlideshowPlay();
+        e.preventDefault();
+      } else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+        slideshowPrev();
+        e.preventDefault();
+      } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+        slideshowNext();
+        e.preventDefault();
+      } else if (e.key === 'f' || e.key === 'F') {
+        const item = STATE.filteredItems[STATE.slideshow.currentIndex];
+        if (item) toggleFavorite(item.src);
+        e.preventDefault();
+      }
+      return;
+    }
+
+    // 2. Lightbox mode shortcuts
+    if (STATE.lightbox.isOpen) {
+      if (e.key === 'Escape') {
+        closeLightbox();
+        e.preventDefault();
+      } else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+        lightboxPrev();
+        e.preventDefault();
+      } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+        lightboxNext();
+        e.preventDefault();
+      } else if (e.key === 'f' || e.key === 'F') {
+        const item = STATE.filteredItems[STATE.lightbox.currentIndex];
+        if (item) toggleFavorite(item.src);
+        e.preventDefault();
+      } else if (e.key === 'i' || e.key === 'I') {
+        toggleLightboxDrawer();
+        e.preventDefault();
+      } else if (e.key === '0') {
+        resetLightboxTransform();
+        e.preventDefault();
+      } else if (e.key === 'r' || e.key === 'R') {
+        rotateLightbox();
+        e.preventDefault();
+      } else if (e.key === '+' || e.key === '=') {
+        zoomLightbox(1.25);
+        e.preventDefault();
+      } else if (e.key === '-' || e.key === '_') {
+        zoomLightbox(0.8);
+        e.preventDefault();
+      }
+      return;
+    }
+
+    // 3. Main View shortcuts
+    if (e.key === '/') {
+      e.preventDefault();
+      document.getElementById('search-input')?.focus();
+    }
+  });
+}
+
+// Kick off when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
+
+  </script>
+</body>
+</html>
