@@ -2,13 +2,13 @@
 assets.py - 照片墙元数据生成脚本
 
 使用方法:
-    uv run photowall assets                         # 使用默认标题 "PhotoWall"
-    uv run photowall assets --title "我的二次元画廊"   # 指定自定义相册标题
+    photowall assets                         # 使用默认标题 "PhotoWall"
+    photowall assets --title "我的二次元画廊"   # 指定自定义相册标题
 
 功能说明:
     1. 自动扫描 assets/ 目录下的所有图片与视频，无条件全量生成 assets.js。
     2. 校验 tags.json：
-       - 若 tags.json 不存在，输出显眼警告提示用户先运行 uv run photowall tags；
+       - 若 tags.json 不存在，输出显眼警告提示用户先运行 photowall tags；
        - 若某张图片的文件大小或修改时间与 tags.json 不一致，输出该文件的 FullName 警告。
     3. 解析每张图片的真实尺寸，并自动根据 EXIF Orientation 校正宽高旋转。
     4. 自动提取 MP4 视频时长。
@@ -294,7 +294,7 @@ def run(args: argparse.Namespace) -> None:
         print("\n" + "=" * 70)
         print("[警告] 未检测到 tags.json 标签缓存文件！")
         print(f"       期望路径: {tags_file.resolve()}")
-        print("       建议先运行: uv run photowall tags 生成 AI 标签。")
+        print("       建议先运行: photowall tags 生成 AI 标签。")
         print("       当前将以无 AI 标签模式继续生成 assets.js...")
         print("=" * 70 + "\n")
 
@@ -448,14 +448,14 @@ def run(args: argparse.Namespace) -> None:
                     tqdm.write(
                         f"[警告] 图片信息不匹配: {full_path.resolve()}\n"
                         f"       磁盘: (size={file_size}, mtime={file_mtime}) vs 缓存: (size={c_size}, mtime={c_mtime})\n"
-                        f"       可能 tags.json 不是最新的，请考虑重新运行 uv run photowall tags"
+                        f"       可能 tags.json 不是最新的，请考虑重新运行 photowall tags"
                     )
                 ai_tags = cached_entry.get("tags", [])
             else:
                 missing_tags_count += 1
                 tqdm.write(
                     f"[警告] 图片未在 tags.json 中找到: {full_path.resolve()}\n"
-                    f"       该图片可能为新增文件，请考虑重新运行 uv run photowall tags 进行打标"
+                    f"       该图片可能为新增文件，请考虑重新运行 photowall tags 进行打标"
                 )
 
         # 标签融合：目录标签 + 形态属性标签 + AI标签
@@ -496,7 +496,7 @@ def run(args: argparse.Namespace) -> None:
             print(
                 f"[提示] 共有 {mismatched_tags_count} 个图片文件属性与 tags.json 不匹配。"
             )
-        print("       建议运行: uv run photowall tags 更新标签缓存。")
+        print("       建议运行: photowall tags 更新标签缓存。")
         print("-" * 60 + "\n")
 
     # 5. 构建 folders 列表 (计算 directCount, totalCount, subFolderCount, cover)

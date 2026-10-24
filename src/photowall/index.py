@@ -2,12 +2,12 @@
 index.py - 照片墙全量索引与构建脚本
 
 使用方法:
-    uv run photowall index                          # 索引当前目录相册 (默认标题为当前目录名)
-    uv run photowall index --home /path/to/gallery  # 索引指定相册目录
-    uv run photowall index --title "我的相册"        # 指定相册标题
-    uv run photowall index --force                  # 强制重新推理 AI 标签并重新解析所有媒体
-    uv run photowall index --filter                 # 仅重算过滤规则与翻译 (不调用 AI 模型)
-    uv run photowall index --skip-tags              # 跳过 AI 视觉打标步骤
+    photowall index                          # 索引当前目录相册 (默认标题为当前目录名)
+    photowall index --home /path/to/gallery  # 索引指定相册目录
+    photowall index --title "我的相册"        # 指定相册标题
+    photowall index --force                  # 强制重新推理 AI 标签并重新解析所有媒体
+    photowall index --filter                 # 仅重算过滤规则与翻译 (不调用 AI 模型)
+    photowall index --skip-tags              # 跳过 AI 视觉打标步骤
 
 功能说明:
     1. 自动从 --home 指定目录中查找 assets/ 目录；

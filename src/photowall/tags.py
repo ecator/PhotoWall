@@ -2,9 +2,9 @@
 tags.py - 照片墙 WD14 Tagger 自动增量打标脚本
 
 使用方法:
-    uv run photowall tags            # 增量扫描 assets/ 并生成/更新 tags.json
-    uv run photowall tags --force    # 忽略缓存，强制重新对所有图片进行 AI 推理
-    uv run photowall tags --filter   # 不调用 AI 模型，仅根据最新的黑名单/同义词/阈值重算 tags
+    photowall tags            # 增量扫描 assets/ 并生成/更新 tags.json
+    photowall tags --force    # 忽略缓存，强制重新对所有图片进行 AI 推理
+    photowall tags --filter   # 不调用 AI 模型，仅根据最新的黑名单/同义词/阈值重算 tags
 
 说明:
     1. 首次运行会自动从 HuggingFace 下载 WD14 ONNX 模型与词表 (约 300MB，支持 HF_ENDPOINT 镜像)。
