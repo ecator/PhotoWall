@@ -62,6 +62,8 @@ MAX_RAW_TAGS_PER_IMAGE = (
 BLACKLIST: Set[str] = {
     # Danbooru 常见无意义构图/人数词
     "1girl",
+    "2girls",
+    "multiple_girls",
     "solo",
     "monochrome",
     "greyscale",
@@ -78,19 +80,9 @@ BLACKLIST: Set[str] = {
     "blurry",
     "depth_of_field",
     "indoors",
-    # 中文对应词
-    "单人",
-    "单人女性",
-    "黑白",
-    "灰度",
-    "看向观众",
-    "微笑",
-    "张嘴",
-    "闭嘴",
-    "简单背景",
-    "白色背景",
-    "模糊背景",
-    "景深",
+    "1boy",
+    "2boys",
+    "multiple_boys",
 }
 
 # 同义词归并映射 (原始词/译名 -> 规范词)
