@@ -5,3 +5,4 @@ tags.json
 __pycache__/
 .venv/
 test*.py
+!/tests/*
