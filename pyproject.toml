@@ -1,6 +1,6 @@
 [project]
 name = "photowall"
-version = "0.1.0"
+dynamic = ["version"]
 description = "一款基于预生成元数据的轻量级照片墙"
 readme = "README.md"
 authors = [{ name = "Martin", email = "qule520@126.com" }]
@@ -17,22 +17,27 @@ dependencies = [
 [project.scripts]
 photowall = "photowall.cli:main"
 
+
 [build-system]
-requires = ["uv_build>=0.12.7,<0.13.0"]
-build-backend = "uv_build"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[project.urls]
+Homepage = "https://github.com/ecator/PhotoWall"
+Repository = "https://github.com/ecator/PhotoWall"
 
 [dependency-groups]
-dev = [
-    "pytest>=9.1.1",
-    "ruff>=0.17.2",
-]
+dev = ["pytest>=9.1.1", "ruff>=0.17.2"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
 [tool.ruff.lint]
 ignore = [
-    "BLE001",  # Do not catch blind exception: `Exception`
-    "S110",    # `try`-`except`-`pass` detected
-    "S112",    # `try`-`except`-`continue` detected
+    "BLE001", # Do not catch blind exception: `Exception`
+    "S110",   # `try`-`except`-`pass` detected
+    "S112",   # `try`-`except`-`continue` detected
 ]
