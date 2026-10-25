@@ -29,7 +29,6 @@ def test_cli_no_args(capsys):
     assert get_version() in captured.out
 
 
-
 def test_cli_index_args():
     parser = build_parser()
     args = parser.parse_args(
@@ -73,14 +72,14 @@ def test_cli_assets_args():
     assert args.command == "assets"
     assert args.title == "测试画廊"
     assert args.force is True
-    assert args.dir == Path(".")
+    assert args.home == Path(".")
 
 
 def test_cli_assets_home_arg():
     parser = build_parser()
     args = parser.parse_args(["assets", "--home", "test_path"])
     assert args.command == "assets"
-    assert args.dir == Path("test_path")
+    assert args.home == Path("test_path")
 
 
 def test_cli_tags_args():
@@ -105,14 +104,14 @@ def test_cli_tags_args():
     assert args.device == "cpu"
     assert args.batch_size == 8
     assert args.verbose is True
-    assert args.dir == Path(".")
+    assert args.home == Path(".")
 
 
 def test_cli_tags_home_arg():
     parser = build_parser()
     args = parser.parse_args(["tags", "--home", "test_path"])
     assert args.command == "tags"
-    assert args.dir == Path("test_path")
+    assert args.home == Path("test_path")
 
 
 def test_cli_dispatch_index(monkeypatch):
@@ -398,4 +397,3 @@ def test_tags_run_banner_includes_version(tmp_path, capsys, monkeypatch):
     tags.run(tags_args)
     captured = capsys.readouterr()
     assert f"PhotoWall v{__version__}" in captured.out
-

@@ -306,10 +306,10 @@ def parse_translation_csv(file_path: Path) -> dict[str, str]:
     return translations
 
 
-def load_translations(base_dir: Path, cache_dir: Path) -> dict[str, str]:
+def load_translations(home_dir: Path, cache_dir: Path) -> dict[str, str]:
     """
     加载中英翻译字典：
-    1. 优先读取项目根目录下的本地文件: tags_zh_cn.csv / translations.json
+    1. 优先读取相册根目录下的本地文件: tags_zh_cn.csv / translations.json
     2. 其次读取缓存目录中的 .cache/tags_zh_cn.csv
     3. 若都不存在，尝试自动从网络下载 10 万+ 社区标准词库并保存为 tags_zh_cn.csv
     4. 若离线，回退到内置的常用词典
@@ -318,9 +318,9 @@ def load_translations(base_dir: Path, cache_dir: Path) -> dict[str, str]:
 
     # 1. 检查根目录用户自定义文件 (优先 tags_zh_cn.csv)
     local_csv_candidates = [
-        base_dir / "tags_zh_cn.csv",
-        base_dir / "zh_cn.csv",
-        base_dir / "danbooru.csv",
+        home_dir / "tags_zh_cn.csv",
+        home_dir / "zh_cn.csv",
+        home_dir / "danbooru.csv",
     ]
     for csv_file in local_csv_candidates:
         if csv_file.is_file():
@@ -328,7 +328,7 @@ def load_translations(base_dir: Path, cache_dir: Path) -> dict[str, str]:
             translations.update(parse_translation_csv(csv_file))
             return translations
 
-    custom_json = base_dir / "translations.json"
+    custom_json = home_dir / "translations.json"
     if custom_json.is_file():
         try:
             with open(custom_json, "r", encoding="utf-8") as f:
@@ -371,7 +371,7 @@ def load_translations(base_dir: Path, cache_dir: Path) -> dict[str, str]:
 
     print("[*] 暂无法连接到在线词库，已使用内置常用高频词典兜底。")
     print(
-        f"    (提示: 你也可以手动下载 tags_zh_cn.csv 放到: {(base_dir / 'tags_zh_cn.csv').resolve()} 生效)"
+        f"    (提示: 你也可以手动下载 tags_zh_cn.csv 放到: {(home_dir / 'tags_zh_cn.csv').resolve()} 生效)"
     )
     return translations
 
@@ -598,9 +598,9 @@ def filter_tags(
 # ==============================================================================
 
 
-def get_checkpoint_dir(project_dir: Path) -> Path:
+def get_checkpoint_dir(home_dir: Path) -> Path:
     """获取断点缓存目录 (.cache/tags)。"""
-    return project_dir / ".cache" / "tags"
+    return home_dir / ".cache" / "tags"
 
 
 def load_checkpoints(checkpoint_dir: Path) -> dict[str, dict[str, Any]]:
@@ -674,12 +674,12 @@ def build_parser(
             description=f"PhotoWall v{__version__} - 照片墙 WD14 Tagger 增量打标工具"
         )
     parser.add_argument(
+        "--home",
         "--dir",
         "-d",
-        "--home",
         type=Path,
         default=None,
-        help="项目根目录路径 (默认: 当前工作目录)",
+        help="相册根目录路径 (默认: 当前工作目录)",
     )
     parser.add_argument(
         "--force", action="store_true", help="强制对所有图片重新运行 AI 模型推理"
@@ -716,13 +716,13 @@ def build_parser(
 
 def run(args: argparse.Namespace) -> None:
     """执行 WD14 Tagger 打标主流程。"""
-    project_dir = (
+    home_dir = (
         (getattr(args, "home", None) or getattr(args, "dir", None)) or Path.cwd()
     ).resolve()
-    assets_dir = project_dir / "assets"
-    tags_file = project_dir / "tags.json"
-    cache_dir = project_dir / ".cache" / "huggingface"
-    checkpoint_dir = get_checkpoint_dir(project_dir)
+    assets_dir = home_dir / "assets"
+    tags_file = home_dir / "tags.json"
+    cache_dir = home_dir / ".cache" / "huggingface"
+    checkpoint_dir = get_checkpoint_dir(home_dir)
     checkpoint_interval = getattr(
         args, "checkpoint_interval", DEFAULT_CHECKPOINT_INTERVAL
     )
@@ -735,8 +735,8 @@ def run(args: argparse.Namespace) -> None:
 
     print(f"[*] PhotoWall v{__version__} - 开始标签扫描与处理")
 
-    translations_cache_dir = project_dir / ".cache"
-    translations = load_translations(project_dir, translations_cache_dir)
+    translations_cache_dir = home_dir / ".cache"
+    translations = load_translations(home_dir, translations_cache_dir)
 
     # 1. 加载既有的 tags.json 缓存
     cached_data: dict[str, Any] = {"meta": {}, "files": {}}
@@ -1074,7 +1074,7 @@ def run(args: argparse.Namespace) -> None:
         "files": updated_files,
     }
 
-    temp_tags_file = project_dir / "tags.json.tmp"
+    temp_tags_file = home_dir / "tags.json.tmp"
     with open(temp_tags_file, "w", encoding="utf-8") as f:
         json.dump(result_data, f, ensure_ascii=False, indent=2)
     temp_tags_file.replace(tags_file)

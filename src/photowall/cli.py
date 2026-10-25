@@ -82,6 +82,5 @@ def main(argv: Sequence[str] | None = None) -> None:
         tags.run(args)
 
 
-
 if __name__ == "__main__":
     main()

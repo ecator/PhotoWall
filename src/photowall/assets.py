@@ -242,12 +242,12 @@ def build_parser(
             description=f"PhotoWall v{__version__} - 照片墙 assets.js 全量生成脚本"
         )
     parser.add_argument(
+        "--home",
         "--dir",
         "-d",
-        "--home",
         type=Path,
         default=None,
-        help="项目根目录路径 (默认: 当前工作目录)",
+        help="相册根目录路径 (默认: 当前工作目录)",
     )
     parser.add_argument(
         "--title",
@@ -265,14 +265,14 @@ def build_parser(
 
 def run(args: argparse.Namespace) -> None:
     """执行 assets.js 生成主流程。"""
-    project_dir = (
+    home_dir = (
         (getattr(args, "home", None) or getattr(args, "dir", None)) or Path.cwd()
     ).resolve()
-    album_title = getattr(args, "title", None) or project_dir.name or "PhotoWall"
-    assets_dir = project_dir / "assets"
-    tags_file = project_dir / "tags.json"
-    output_file = project_dir / "assets.js"
-    media_cache_dir = project_dir / ".cache"
+    album_title = getattr(args, "title", None) or home_dir.name or "PhotoWall"
+    assets_dir = home_dir / "assets"
+    tags_file = home_dir / "tags.json"
+    output_file = home_dir / "assets.js"
+    media_cache_dir = home_dir / ".cache"
     media_cache_dir.mkdir(parents=True, exist_ok=True)
     media_cache_file = media_cache_dir / "assets_cache.json"
 
@@ -608,7 +608,7 @@ def run(args: argparse.Namespace) -> None:
     }
 
     # 8. 无条件生成写入 assets.js (原子写入)
-    temp_output_file = project_dir / "assets.js.tmp"
+    temp_output_file = home_dir / "assets.js.tmp"
     js_content = (
         "// 由 photowall assets 自动生成\nwindow.PHOTO_WALL_DATA = "
         + json.dumps(wall_data, ensure_ascii=False, indent=2)
