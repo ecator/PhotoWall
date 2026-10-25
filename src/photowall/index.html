@@ -1760,11 +1760,79 @@
     }
 
     /* ========================================================
+   Back to Top Button
+   ======================================================== */
+    .back-to-top-btn {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 900;
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-full);
+      background-color: var(--bg-glass-card);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-light);
+      color: var(--text-secondary);
+      box-shadow: var(--shadow-md);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(16px) scale(0.9);
+      transition: opacity var(--transition-normal),
+                  transform var(--transition-normal),
+                  visibility var(--transition-normal),
+                  background-color var(--transition-fast),
+                  border-color var(--transition-fast),
+                  color var(--transition-fast),
+                  box-shadow var(--transition-fast);
+      outline: none;
+    }
+
+    .back-to-top-btn.visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+    }
+
+    .back-to-top-btn:hover {
+      background-color: var(--bg-card-hover);
+      color: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 6px 16px var(--accent-glow);
+      transform: translateY(-3px) scale(1.05);
+    }
+
+    .back-to-top-btn:active {
+      transform: translateY(0) scale(0.95);
+    }
+
+    .back-to-top-btn:focus-visible {
+      box-shadow: 0 0 0 3px var(--accent-light);
+    }
+
+    .back-to-top-btn .svg-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    body:has(.lightbox-modal.active) .back-to-top-btn,
+    body:has(.slideshow-modal.active) .back-to-top-btn {
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+
+    /* ========================================================
    Toast Notification System
    ======================================================== */
     .toast-container {
       position: fixed;
-      bottom: 24px;
+      bottom: 80px;
       right: 24px;
       z-index: 3000;
       display: flex;
@@ -2014,6 +2082,11 @@
         </div>
       </main>
     </div>
+
+    <!-- Back to Top Button -->
+    <button id="back-to-top-btn" class="back-to-top-btn" type="button" title="回到顶部" aria-label="回到顶部">
+      <svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"/></svg>
+    </button>
   </div>
 
   <!-- Lightbox Modal -->
@@ -2144,7 +2217,8 @@
       loop: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>`,
       shuffle: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>`,
       fullscreenExit: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>`,
-      subfolder: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M20 18H4V8h16v10zm0-12h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>`
+      subfolder: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M20 18H4V8h16v10zm0-12h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>`,
+      arrowUp: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"/></svg>`
     };
 
 
@@ -2609,6 +2683,9 @@
 
       // Reset and batch render the grid
       resetAndRenderGrid();
+
+      // Refresh back-to-top visibility
+      updateBackToTopVisibility();
     }
 
     // Render dynamic tag capsules
@@ -3114,6 +3191,18 @@
       });
 
       sentinelObserver.observe(sentinel);
+    }
+
+    // Back to Top button visibility updater
+    function updateBackToTopVisibility() {
+      const btn = document.getElementById('back-to-top-btn');
+      if (!btn) return;
+      const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      if (scrollTop > 300) {
+        btn.classList.add('visible');
+      } else {
+        btn.classList.remove('visible');
+      }
     }
 
     // Layout Mode and Slider
@@ -3859,6 +3948,10 @@
       document.getElementById('hud-prev-btn').innerHTML = ICONS.chevronLeft;
       document.getElementById('hud-next-btn').innerHTML = ICONS.chevronRight;
       document.getElementById('hud-exit-btn').innerHTML = ICONS.fullscreenExit;
+
+      // Back to top
+      const backToTopBtn = document.getElementById('back-to-top-btn');
+      if (backToTopBtn) backToTopBtn.innerHTML = ICONS.arrowUp;
     }
 
     function bindEvents() {
@@ -4037,6 +4130,29 @@
           stopSlideshow();
         }
       });
+
+      // Back to top button click
+      const backToTopBtn = document.getElementById('back-to-top-btn');
+      if (backToTopBtn) {
+        backToTopBtn.addEventListener('click', () => {
+          window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+          });
+        });
+      }
+
+      // Back to top scroll listener (throttled with requestAnimationFrame)
+      let scrollTicking = false;
+      window.addEventListener('scroll', () => {
+        if (!scrollTicking) {
+          window.requestAnimationFrame(() => {
+            updateBackToTopVisibility();
+            scrollTicking = false;
+          });
+          scrollTicking = true;
+        }
+      }, { passive: true });
 
       // Global Keyboard Shortcuts
       window.addEventListener('keydown', (e) => {
