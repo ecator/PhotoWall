@@ -24,7 +24,7 @@ def _create_dummy_image(path: Path, color=(255, 0, 0)) -> None:
 
 
 def test_save_and_load_checkpoints(tmp_path):
-    checkpoint_dir = tmp_path / ".cache" / "tags"
+    checkpoint_dir = tmp_path / ".photowall" / "tags"
 
     # 1. 保存分块 1
     chunk_1 = {
@@ -57,7 +57,7 @@ def test_save_and_load_checkpoints(tmp_path):
 
 
 def test_clear_checkpoints(tmp_path):
-    checkpoint_dir = tmp_path / ".cache" / "tags"
+    checkpoint_dir = tmp_path / ".photowall" / "tags"
     checkpoint_dir.mkdir(parents=True)
 
     (checkpoint_dir / "checkpoint_001.json").write_text("{}", encoding="utf-8")
@@ -74,7 +74,7 @@ def test_clear_checkpoints(tmp_path):
 
 
 def test_load_checkpoints_with_corrupted_file(tmp_path, capsys):
-    checkpoint_dir = tmp_path / ".cache" / "tags"
+    checkpoint_dir = tmp_path / ".photowall" / "tags"
     checkpoint_dir.mkdir(parents=True)
 
     # 正常文件
@@ -115,7 +115,7 @@ def test_tags_resume_from_checkpoint_and_cleanup(tmp_path, monkeypatch):
     stat1 = img1.stat()
 
     # 模拟在中断前，pic1.jpg 已经存在断点缓存中
-    checkpoint_dir = tmp_path / ".cache" / "tags"
+    checkpoint_dir = tmp_path / ".photowall" / "tags"
     checkpoint_dir.mkdir(parents=True)
     cp_data = {
         "pic1.jpg": {
@@ -245,7 +245,7 @@ def test_tags_force_clears_existing_checkpoints(tmp_path, monkeypatch):
     img1 = assets_dir / "pic1.jpg"
     _create_dummy_image(img1)
 
-    checkpoint_dir = tmp_path / ".cache" / "tags"
+    checkpoint_dir = tmp_path / ".photowall" / "tags"
     checkpoint_dir.mkdir(parents=True)
     (checkpoint_dir / "old_checkpoint.json").write_text("{}", encoding="utf-8")
 

@@ -34,7 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser_index = subparsers.add_parser(
         "index",
         help="全量索引相册：生成 tags.json、assets.js 并输出 index.html",
-        description=f"PhotoWall v{version_str} - 从指定的 --home 中查找 assets 目录，并输出 .cache、tags.json、assets.js 与 index.html",
+        description=f"PhotoWall v{version_str} - 从指定的 --home 中查找 assets 目录，并输出 .photowall、tags.json、assets.js 与 index.html",
     )
     index.build_parser(parser_index)
 

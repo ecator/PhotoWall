@@ -272,7 +272,7 @@ def run(args: argparse.Namespace) -> None:
     assets_dir = home_dir / "assets"
     tags_file = home_dir / "tags.json"
     output_file = home_dir / "assets.js"
-    media_cache_dir = home_dir / ".cache"
+    media_cache_dir = home_dir / ".photowall"
     media_cache_dir.mkdir(parents=True, exist_ok=True)
     media_cache_file = media_cache_dir / "assets_cache.json"
 

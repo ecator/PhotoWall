@@ -310,7 +310,7 @@ def load_translations(home_dir: Path, cache_dir: Path) -> dict[str, str]:
     """
     加载中英翻译字典：
     1. 优先读取相册根目录下的本地文件: tags_zh_cn.csv / translations.json
-    2. 其次读取缓存目录中的 .cache/tags_zh_cn.csv
+    2. 其次读取缓存目录中的 .photowall/tags_zh_cn.csv
     3. 若都不存在，尝试自动从网络下载 10 万+ 社区标准词库并保存为 tags_zh_cn.csv
     4. 若离线，回退到内置的常用词典
     """
@@ -594,18 +594,18 @@ def filter_tags(
 
 
 # ==============================================================================
-# 4. 临时断点缓存管理 (.cache/tags/*.json)
+# 4. 临时断点缓存管理 (.photowall/tags/*.json)
 # ==============================================================================
 
 
 def get_checkpoint_dir(home_dir: Path) -> Path:
-    """获取断点缓存目录 (.cache/tags)。"""
-    return home_dir / ".cache" / "tags"
+    """获取断点缓存目录 (.photowall/tags)。"""
+    return home_dir / ".photowall" / "tags"
 
 
 def load_checkpoints(checkpoint_dir: Path) -> dict[str, dict[str, Any]]:
     """
-    扫描并加载 .cache/tags 目录下的所有临时 checkpoint JSON 文件。
+    扫描并加载 .photowall/tags 目录下的所有临时 checkpoint JSON 文件。
     返回合并后的图片元数据字典。
     """
     merged: dict[str, dict[str, Any]] = {}
@@ -721,7 +721,7 @@ def run(args: argparse.Namespace) -> None:
     ).resolve()
     assets_dir = home_dir / "assets"
     tags_file = home_dir / "tags.json"
-    cache_dir = home_dir / ".cache" / "huggingface"
+    cache_dir = home_dir / ".photowall" / "huggingface"
     checkpoint_dir = get_checkpoint_dir(home_dir)
     checkpoint_interval = getattr(
         args, "checkpoint_interval", DEFAULT_CHECKPOINT_INTERVAL
@@ -735,7 +735,7 @@ def run(args: argparse.Namespace) -> None:
 
     print(f"[*] PhotoWall v{__version__} - 开始标签扫描与处理")
 
-    translations_cache_dir = home_dir / ".cache"
+    translations_cache_dir = home_dir / ".photowall"
     translations = load_translations(home_dir, translations_cache_dir)
 
     # 1. 加载既有的 tags.json 缓存
@@ -777,7 +777,7 @@ def run(args: argparse.Namespace) -> None:
         if cleaned > 0:
             print(f"[*] 强制重建模式，已清空历史断点缓存 ({cleaned} 个分块文件)")
     else:
-        # 加载断点缓存 (.cache/tags/*.json)
+        # 加载断点缓存 (.photowall/tags/*.json)
         checkpoint_data = load_checkpoints(checkpoint_dir)
         if checkpoint_data:
             print(

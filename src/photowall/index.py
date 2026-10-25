@@ -11,7 +11,7 @@ index.py - 照片墙全量索引与构建脚本
 
 功能说明:
     1. 自动从 --home 指定目录中查找 assets/ 目录；
-    2. 执行 AI 视觉打标并生成/更新 tags.json 以及 .cache/；
+    2. 执行 AI 视觉打标并生成/更新 tags.json 以及 .photowall/；
     3. 解析媒体文件尺寸与时长，融合标签并生成 assets.js；
     4. 将内置 index.html 网页入口文件输出到 --home 目录。
 """
@@ -88,7 +88,7 @@ def build_parser(
     """构建 index 命令的命令行参数解析器。"""
     if parser is None:
         parser = argparse.ArgumentParser(
-            description=f"PhotoWall v{__version__} - 从相册目录中查找 assets 并输出对应的 .cache、tags.json、assets.js 与 index.html"
+            description=f"PhotoWall v{__version__} - 从相册目录中查找 assets 并输出对应的 .photowall、tags.json、assets.js 与 index.html"
         )
     parser.add_argument(
         "--home",
@@ -210,7 +210,7 @@ def run(args: argparse.Namespace) -> None:
     print(f"    - 标签文件: {(home_dir / 'tags.json').resolve()}")
     print(f"    - 数据文件: {(home_dir / 'assets.js').resolve()}")
     print(f"    - 网页文件: {out_html.resolve()}")
-    print(f"    - 缓存目录: {(home_dir / '.cache').resolve()}")
+    print(f"    - 缓存目录: {(home_dir / '.photowall').resolve()}")
     print("=" * 60)
 
 
