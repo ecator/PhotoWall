@@ -31,6 +31,8 @@ from typing import Any
 from PIL import ExifTags, Image
 from tqdm import tqdm
 
+from photowall.version import __version__
+
 # 支持的文件后缀定义
 IMAGE_EXTENSIONS: set[str] = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
 VIDEO_EXTENSIONS: set[str] = {".mp4", ".webm"}
@@ -236,7 +238,9 @@ def build_parser(
 ) -> argparse.ArgumentParser:
     """构建 assets 命令的命令行参数解析器。"""
     if parser is None:
-        parser = argparse.ArgumentParser(description="照片墙 assets.js 全量生成脚本")
+        parser = argparse.ArgumentParser(
+            description=f"PhotoWall v{__version__} - 照片墙 assets.js 全量生成脚本"
+        )
     parser.add_argument(
         "--dir",
         "-d",
@@ -275,6 +279,8 @@ def run(args: argparse.Namespace) -> None:
     if not assets_dir.is_dir():
         print(f"[错误] 未找到 assets 目录: {assets_dir.resolve()}")
         sys.exit(1)
+
+    print(f"[*] PhotoWall v{__version__} - 开始生成 assets.js...")
 
     # 1. 检查并读取 tags.json
     tags_data: dict[str, Any] | None = None

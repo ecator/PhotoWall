@@ -27,6 +27,8 @@ from huggingface_hub import hf_hub_download
 from PIL import Image
 from tqdm import tqdm
 
+from photowall.version import __version__
+
 # ==============================================================================
 # 1. 内嵌配置区域 (可根据个人喜好随意调整，修改后无需重跑 AI 推理)
 # ==============================================================================
@@ -668,7 +670,9 @@ def build_parser(
 ) -> argparse.ArgumentParser:
     """构建 tags 命令的命令行参数解析器。"""
     if parser is None:
-        parser = argparse.ArgumentParser(description="照片墙 WD14 Tagger 增量打标工具")
+        parser = argparse.ArgumentParser(
+            description=f"PhotoWall v{__version__} - 照片墙 WD14 Tagger 增量打标工具"
+        )
     parser.add_argument(
         "--dir",
         "-d",
@@ -728,6 +732,8 @@ def run(args: argparse.Namespace) -> None:
     if not assets_dir.is_dir():
         print(f"[错误] 未找到 assets 目录: {assets_dir.resolve()}")
         sys.exit(1)
+
+    print(f"[*] PhotoWall v{__version__} - 开始标签扫描与处理")
 
     translations_cache_dir = project_dir / ".cache"
     translations = load_translations(project_dir, translations_cache_dir)

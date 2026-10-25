@@ -23,6 +23,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from photowall import assets, tags
+from photowall.version import __version__
 
 
 def get_template_index_html_path() -> Path | None:
@@ -87,7 +88,7 @@ def build_parser(
     """构建 index 命令的命令行参数解析器。"""
     if parser is None:
         parser = argparse.ArgumentParser(
-            description="从相册目录中查找 assets 并输出对应的 .cache、tags.json、assets.js 与 index.html"
+            description=f"PhotoWall v{__version__} - 从相册目录中查找 assets 并输出对应的 .cache、tags.json、assets.js 与 index.html"
         )
     parser.add_argument(
         "--home",
@@ -157,6 +158,7 @@ def run(args: argparse.Namespace) -> None:
         sys.exit(1)
 
     print("=" * 60)
+    print(f"[*] PhotoWall v{__version__}")
     print(f"[*] 开始照片墙相册索引: {home_dir.resolve()}")
     print("=" * 60)
 
