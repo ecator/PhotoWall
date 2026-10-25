@@ -2036,11 +2036,11 @@
     </div>
 
     <div class="lightbox-stage">
-      <button id="lightbox-prev-btn" class="lightbox-nav-arrow lightbox-nav-prev" title="上一张 (← / A)"></button>
       <div id="lightbox-viewport" class="lightbox-viewport">
+        <button id="lightbox-prev-btn" class="lightbox-nav-arrow lightbox-nav-prev" title="上一张 (← / A)"></button>
         <div id="lightbox-media-wrapper" class="lightbox-media-wrapper"></div>
+        <button id="lightbox-next-btn" class="lightbox-nav-arrow lightbox-nav-next" title="下一张 (→ / D)"></button>
       </div>
-      <button id="lightbox-next-btn" class="lightbox-nav-arrow lightbox-nav-next" title="下一张 (→ / D)"></button>
 
       <!-- Details Drawer -->
       <div id="lightbox-drawer" class="lightbox-drawer collapsed">
@@ -3352,6 +3352,7 @@
 
       // Wheel zoom
       viewport.addEventListener('wheel', (e) => {
+        if (e.target && e.target.closest('.lightbox-nav-arrow')) return;
         e.preventDefault();
         const factor = e.deltaY < 0 ? 1.15 : 0.87;
         zoomLightbox(factor);
@@ -3361,6 +3362,7 @@
       viewport.addEventListener('mousedown', (e) => {
         // Left mouse button only, and image items only
         if (e.button !== 0) return;
+        if (e.target && e.target.closest('.lightbox-nav-arrow')) return;
         const item = STATE.filteredItems[STATE.lightbox.currentIndex];
         if (!item || item.type !== 'image') return;
         if (e.target && e.target.tagName === 'VIDEO') return;
@@ -3386,6 +3388,7 @@
 
       // Double Click: Toggle between Fit (1x) and 1:1 Original Pixel
       viewport.addEventListener('dblclick', (e) => {
+        if (e.target && e.target.closest('.lightbox-nav-arrow')) return;
         const item = STATE.filteredItems[STATE.lightbox.currentIndex];
         if (!item || item.type !== 'image') return;
 
