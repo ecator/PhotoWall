@@ -237,13 +237,13 @@ BUILTIN_TRANSLATIONS: dict[str, str] = {
 
 # 社区开源全量 Danbooru 汉化词库下载源 (收录 10 万 ~ 15 万+ 标签)
 ONLINE_TRANSLATION_URLS = [
-    # 1. Yellow-Rush/zh_CN-Tags (Stable Diffusion / Danbooru 社区主流全量汉化表)
+    # 1. wangjue520/danbooru-zh-dict (12 万+ 标签精校中英字典)
+    "https://raw.githubusercontent.com/wangjue520/danbooru-zh-dict/main/dist/danbooru_zh_dict.csv",
+    "https://ghproxy.net/https://raw.githubusercontent.com/wangjue520/danbooru-zh-dict/main/dist/danbooru_zh_dict.csv",
+    # 2. Yellow-Rush/zh_CN-Tags (Stable Diffusion / Danbooru 社区主流全量汉化表)
     "https://raw.githubusercontent.com/Yellow-Rush/zh_CN-Tags/main/danbooru.csv",
     "https://ghproxy.net/https://raw.githubusercontent.com/Yellow-Rush/zh_CN-Tags/main/danbooru.csv",
     "https://fastly.jsdelivr.net/gh/Yellow-Rush/zh_CN-Tags@main/danbooru.csv",
-    # 2. wangjue520/danbooru-zh-dict (12 万+ 标签精校中英字典)
-    "https://raw.githubusercontent.com/wangjue520/danbooru-zh-dict/main/dist/danbooru_zh_dict.csv",
-    "https://ghproxy.net/https://raw.githubusercontent.com/wangjue520/danbooru-zh-dict/main/dist/danbooru_zh_dict.csv",
 ]
 
 
