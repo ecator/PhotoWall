@@ -1,25 +1,154 @@
-# 照片墙
+# 📸 PhotoWall 照片墙
 
-这是一个纯本地单页`index.html`+`assets.js`的照片墙应用，通过`photowall index`子命令扫描相册目录生成`tags.json`、`assets.js`并输出`index.html`，无需服务端即可在浏览器中展示照片。
+> 基于预生成元数据的轻量级纯本地单页照片墙 —— **无需服务端，双击 `index.html` 即可浏览。**
 
-## 常用命令
+把照片和视频扔进 `assets/`，运行一条命令，PhotoWall 会自动完成 AI 视觉打标、媒体元数据提取，并生成一个开箱即用的单页相册。
 
-- `photowall index`：一键全量索引。从指定相册根目录（`--home`，默认为当前工作目录）查找 `assets/` 媒体文件，自动进行 AI 打标生成 `tags.json`、提取元数据生成 `assets.js`，并输出 `index.html` 网页文件。
-  - `--home`：相册根目录路径（可选，默认当前目录）。
-  - `--title`：相册标题（可选，默认使用相册文件夹名）。
-  - `--force`：强制重新推理 AI 标签并重新解析所有媒体文件。
-  - `--skip-tags`：跳过 AI 标签生成步骤。
-- `photowall tags`：仅使用 WD14 Tagger 自动为图片打标并生成 `tags.json`。
-- `photowall assets`：仅扫描 `assets/` 目录并融合标签生成 `assets.js`。
+## ✨ 特性
 
-## 快速开始
+- **纯本地、零服务端**：最终产物只有 `index.html` + `assets.js`，浏览器直接打开即可，方便拷贝、归档与分享。
+- **AI 自动打标**：内置 [WD14 Tagger](https://huggingface.co/SmilingWolf/wd-swinv2-tagger-v3)（ONNX），自动识别画面特征并翻译为中文标签。
+- **增量与断点续传**：仅对新增或修改过的文件进行推理与解析，中断后可从断点继续，大相册也能快速更新。
+- **GPU 加速**：自动按 CUDA → TensorRT → DirectML → CPU 的顺序选择推理设备。
+- **丰富的浏览体验**：
+  - 目录树导航、面包屑、包含子目录开关
+  - 文件名 / 路径 / 标签全文搜索，标签胶囊筛选
+  - 瀑布流 / 自适应网格 / 紧凑方图三种视图，卡片宽度可调
+  - 按图片 / 视频 / GIF 筛选，按时间、体积、文件名排序
+  - 灯箱查看（缩放、旋转、详情）、幻灯片放映（顺序 / 随机）
+  - 收藏夹、深色 / 浅色主题（保存在浏览器本地）
 
-1. 安装 `photowall`：
-   ```bash
-   uv tool install photowall
-   ```
-2. 把图片和视频放进 `assets` 文件夹，不需要特别分门别类，直接扔进去就行。
-   > 最开始没有 `assets` 文件夹需要手动创建。
-3. 运行 `photowall index` 生成相册索引。
-4. 打开生成的 `index.html` 即可。
-   > 如果更新了 `assets` 的内容则再次运行 `photowall index` 即可。
+## 🚀 快速开始
+
+**1. 安装**（需要 Python 3.14）
+
+```bash
+uv tool install photowall
+```
+
+**2. 准备相册目录**
+
+新建一个相册文件夹，在其中创建 `assets/` 目录，把图片和视频放进去即可。支持多级子文件夹，无需特别整理。
+
+```text
+我的相册/
+└── assets/
+    ├── 2024 旅行/
+    │   ├── IMG_0001.jpg
+    │   └── VID_0002.mp4
+    └── 随手拍.png
+```
+
+**3. 生成索引**
+
+```bash
+cd 我的相册
+photowall index
+```
+
+> [!NOTE]
+> 首次运行会从 HuggingFace 下载 WD14 模型（约 300MB）及中文标签词库，请保持网络畅通。
+
+**4. 打开相册**
+
+用浏览器打开生成的 `index.html` 即可。之后每次增删媒体文件，重新运行 `photowall index` 即可增量更新。
+
+## 📂 生成产物
+
+运行完成后，相册目录结构如下：
+
+```text
+我的相册/
+├── assets/        # 你的媒体文件（不会被修改）
+├── .photowall/    # 缓存目录：模型、词库、断点、元数据缓存
+├── tags.json      # AI 标签缓存
+├── assets.js      # 前端读取的媒体元数据
+└── index.html     # 相册网页入口
+```
+
+> [!TIP]
+> 分享或归档时只需保留 `assets/`、`assets.js` 和 `index.html`；`.photowall/` 与 `tags.json` 仅用于加速下次构建。
+
+## 🛠️ 命令参考
+
+| 命令                 | 说明                                                       |
+| -------------------- | ---------------------------------------------------------- |
+| `photowall index`    | 一键全量构建：AI 打标 → 生成 `assets.js` → 输出 `index.html` |
+| `photowall tags`     | 仅执行 AI 打标，生成 / 更新 `tags.json`                     |
+| `photowall assets`   | 仅扫描媒体并融合标签，生成 `assets.js`                      |
+| `photowall version`  | 显示版本号（等同于 `photowall -V`）                         |
+
+### `photowall index` 常用参数
+
+| 参数                        | 说明                                                       |
+| --------------------------- | ---------------------------------------------------------- |
+| `--home`, `-d <目录>`       | 相册根目录，默认为当前目录                                 |
+| `--title <标题>`            | 相册标题，默认使用相册文件夹名                             |
+| `--skip-tags`               | 跳过 AI 打标，仅更新 `assets.js` 与 `index.html`（速度最快） |
+| `--force`                   | 忽略所有缓存，强制重新推理标签并重新解析媒体               |
+| `--filter`                  | 不调用模型，仅根据最新过滤规则与翻译重算标签               |
+| `--device <设备>`           | 推理设备：`auto`（默认）/ `cuda` / `dml` / `cpu`             |
+| `--batch-size <N>`          | 推理批大小，默认 `0` 自动选择（GPU 为 4，CPU 为 1）          |
+| `--checkpoint-interval <N>` | 每处理 N 张图片保存一次断点，默认 `100`                     |
+| `-v`, `--verbose`           | 输出每个文件的详细路径与缓存状态                           |
+
+> 子命令 `tags`、`assets` 的参数是上述参数的子集，可通过 `photowall <命令> -h` 查看。
+
+## 📁 支持的格式
+
+- **图片**：`.jpg` `.jpeg` `.png` `.webp` `.gif` `.bmp`（自动按 EXIF 方向校正尺寸）
+- **视频**：`.mp4` `.webm`（自动提取时长，不参与 AI 打标）
+
+## 🏷️ 标签说明
+
+每个媒体的标签由三部分融合而成：
+
+1. **目录标签**：根据所在子文件夹名称自动分词生成。
+2. **画幅标签**：根据宽高比自动判断为「横屏」「竖屏」或「方图」。
+3. **AI 标签**：由 WD14 Tagger 识别，每张图片最多保留 6 个高置信度标签。
+
+**自定义中文翻译**：在相册根目录放置 `tags_zh_cn.csv`（或 `translations.json`）即可覆盖默认词库。若在线词库下载失败，会自动回退到内置的常用词典。
+
+## ⌨️ 快捷键
+
+| 场景     | 快捷键                                                                                 |
+| -------- | -------------------------------------------------------------------------------------- |
+| 全局     | `/` 聚焦搜索框                                                                         |
+| 灯箱     | `←` `→` / `A` `D` 切换，`+` `-` 缩放，`0` 复位，`R` 旋转，`I` 详情，`F` 收藏，`Esc` 关闭 |
+| 幻灯片   | `空格` 播放 / 暂停，`←` `→` 切换，`F` 收藏，`Esc` 退出                                  |
+
+## ❓ 常见问题
+
+<details>
+<summary><b>不想用 AI 打标，或者机器没有 GPU？</b></summary>
+
+使用 `photowall index --skip-tags` 跳过打标，仅按目录与画幅生成标签。也可以用 `--device cpu` 在 CPU 上运行（速度较慢，但支持断点续传）。
+
+</details>
+
+<details>
+<summary><b>打标中途被中断了怎么办？</b></summary>
+
+直接重新运行同一条命令即可，已完成的部分会从 `.photowall/tags/` 断点缓存中恢复。
+
+</details>
+
+<details>
+<summary><b>修改了 assets 中的文件，需要全部重建吗？</b></summary>
+
+不需要。PhotoWall 会根据文件大小与修改时间自动识别变更，只处理新增或改动过的文件。
+
+</details>
+
+## 🧑‍💻 开发
+
+```bash
+uv sync                                # 安装依赖
+uv run photowall index --home demo     # 本地调试
+uv run pytest                          # 运行测试
+uv run ruff check && uv run ruff format  # 代码检查与格式化
+```
+
+## 📄 许可证
+
+[MIT](LICENSE)
