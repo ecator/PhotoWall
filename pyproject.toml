@@ -1,5 +1,5 @@
 [project]
-name = "photowall"
+name = "PhotoWall"
 dynamic = ["version"]
 description = "一款基于预生成元数据的轻量级照片墙"
 readme = "README.md"

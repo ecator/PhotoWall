@@ -1,0 +1,35 @@
+name: Upload Python Package
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      # 🔐 必须：用于 PyPI 的可信发布 (Trusted Publishing) 免密认证
+      id-token: write
+
+    steps:
+      # 1. 拉取代码
+      - uses: actions/checkout@v4
+
+      # 2. 安装并配置 uv
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.2.0
+        with:
+          enable-cache: true
+
+      # 3. 使用 uv 构建包 (生成 dist/)
+      - name: Build release distributions
+        run: uv build
+
+      # 4. 使用 uv 直接发布到 PyPI
+      # uv 会自动识别 GitHub 的 id-token 并与 PyPI 完成 OIDC 握手，无需任何 Token
+      - name: Publish to PyPI
+        run: uv publish
