@@ -38,19 +38,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     index.build_parser(parser_index)
 
-    parser_assets = subparsers.add_parser(
-        "assets",
-        help="扫描 assets 目录并生成 assets.js 元数据",
-        description=f"PhotoWall v{version_str} - 扫描 assets/ 目录下的所有媒体文件，融合标签并生成 assets.js",
-    )
-    assets.build_parser(parser_assets)
-
     parser_tags = subparsers.add_parser(
         "tags",
         help="使用 WD14 Tagger 自动为图片打标并生成 tags.json",
-        description=f"PhotoWall v{version_str} - 使用 WD14 Tagger AI 模型增量扫描并为 assets/ 图片生成 tags.json 标签缓存",
+        description=f"PhotoWall v{version_str} - 从指定的 --home 中使用 WD14 Tagger AI 模型增量扫描并为 assets/ 图片生成 tags.json 标签缓存",
     )
     tags.build_parser(parser_tags)
+
+    parser_assets = subparsers.add_parser(
+        "assets",
+        help="扫描 assets 目录并生成 assets.js 元数据",
+        description=f"PhotoWall v{version_str} - 从指定的 --home 中扫描 assets/ 目录下的所有媒体文件，融合标签并生成 assets.js",
+    )
+    assets.build_parser(parser_assets)
 
     subparsers.add_parser(
         "version",
