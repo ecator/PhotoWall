@@ -27,7 +27,7 @@ from huggingface_hub import hf_hub_download
 from PIL import Image
 from tqdm import tqdm
 
-from photowall.version import __version__
+from .version import __version__
 
 # ==============================================================================
 # 1. 内嵌配置区域 (可根据个人喜好随意调整，修改后无需重跑 AI 推理)

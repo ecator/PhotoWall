@@ -22,8 +22,8 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from photowall import assets, tags
-from photowall.version import __version__
+from . import assets, tags
+from .version import __version__
 
 
 def get_template_index_html_path() -> Path | None:

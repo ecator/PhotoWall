@@ -31,7 +31,7 @@ from typing import Any
 from PIL import ExifTags, Image
 from tqdm import tqdm
 
-from photowall.version import __version__
+from .version import __version__
 
 # 支持的文件后缀定义
 IMAGE_EXTENSIONS: set[str] = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}

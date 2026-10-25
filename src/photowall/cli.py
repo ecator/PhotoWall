@@ -6,8 +6,8 @@ import argparse
 import sys
 from collections.abc import Sequence
 
-from photowall import assets, index, tags
-from photowall.version import get_version
+from . import assets, index, tags
+from .version import get_version
 
 
 def build_parser() -> argparse.ArgumentParser:
