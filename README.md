@@ -23,4 +23,3 @@
 3. 运行 `photowall index` 生成相册索引。
 4. 打开生成的 `index.html` 即可。
    > 如果更新了 `assets` 的内容则再次运行 `photowall index` 即可。
-5. 如果想启动本地服务器也可以直接运行 `start.bat`，会自动启动本地服务器并使用浏览器打开。
