@@ -3,7 +3,9 @@ assets/
 assets.js
 tags.json
 .cache/
+.photowall/
 __pycache__/
 .pytest_cache/
 .ruff_cache/
 .venv/
+dist/
