@@ -9,7 +9,7 @@
 - **纯本地、零服务端**：最终产物只有 `index.html` + `assets.js`，浏览器直接打开即可，方便拷贝、归档与分享。
 - **AI 自动打标**：内置 [WD14 Tagger](https://huggingface.co/SmilingWolf/wd-swinv2-tagger-v3)（ONNX），自动识别画面特征并翻译为中文标签。
 - **增量与断点续传**：仅对新增或修改过的文件进行推理与解析，中断后可从断点继续，大相册也能快速更新。
-- **GPU 加速**：自动按 CUDA → TensorRT → DirectML → CPU 的顺序选择推理设备。
+- **GPU 加速**：优先使用 CUDA 加速推理，若无可用 GPU 环境自动回退到 CPU。
 - **丰富的浏览体验**：
   - 目录树导航、面包屑、包含子目录开关
   - 文件名 / 路径 / 标签全文搜索，标签胶囊筛选
@@ -87,7 +87,7 @@ photowall index
 | `--skip-tags`               | 跳过 AI 打标，仅更新 `assets.js` 与 `index.html`（速度最快） |
 | `--force`                   | 忽略所有缓存，强制重新推理标签并重新解析媒体               |
 | `--filter`                  | 不调用模型，仅根据最新过滤规则与翻译重算标签               |
-| `--device <设备>`           | 推理设备：`auto`（默认）/ `cuda` / `dml` / `cpu`             |
+| `--device <设备>`           | 推理设备：`auto`（默认）/ `cuda` / `cpu`                     |
 | `--batch-size <N>`          | 推理批大小，默认 `0` 自动选择（GPU 为 4，CPU 为 1）          |
 | `--checkpoint-interval <N>` | 每处理 N 张图片保存一次断点，默认 `100`                     |
 | `-v`, `--verbose`           | 输出每个文件的详细路径与缓存状态                           |

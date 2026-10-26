@@ -116,9 +116,9 @@ def build_parser(
     )
     parser.add_argument(
         "--device",
-        choices=["auto", "cuda", "dml", "cpu"],
+        choices=["auto", "cuda", "cpu"],
         default="auto",
-        help="指定 AI 打标推理设备 (auto: 优先 GPU/DirectML/CUDA, 自动回退 CPU)",
+        help="指定 AI 打标推理设备 (auto: 优先 CUDA GPU, 自动回退 CPU)",
     )
     parser.add_argument(
         "--batch-size",

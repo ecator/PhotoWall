@@ -27,6 +27,7 @@ from huggingface_hub import hf_hub_download
 from PIL import Image
 from tqdm import tqdm
 
+from .gpu_env import setup_cuda_env
 from .version import __version__
 
 # ==============================================================================
@@ -452,71 +453,45 @@ def create_inference_session(
     model_path: str, device: str = "auto"
 ) -> tuple[ort.InferenceSession, str]:
     """
-    创建 ONNX Runtime 会话，严格贯彻 GPU 优先策略：
-    - auto: 依次尝试 CUDA -> TensorRT -> DirectML -> CPU
-    - cuda: 优先 CUDA
-    - dml:  优先 DirectML (基于 DirectX 12，Windows 原生硬件加速，免安装 CUDA Toolkit)
+    创建 ONNX Runtime 会话，优先使用 CUDA GPU 加速：
+    - auto: 优先 CUDA -> 自动回退 CPU
+    - cuda: 仅使用 CUDA
     - cpu:  使用 CPU
 
     返回: (session, active_provider_name)
     """
     available_providers = ort.get_available_providers()
 
-    gpu_provider_candidates: list[tuple[str, dict[str, Any]]] = [
-        (
-            "CUDAExecutionProvider",
-            {
-                "device_id": 0,
-                "arena_extend_strategy": "kNextPowerOfTwo",
-                "cudnn_conv_algo_search": "DEFAULT",
-                "do_copy_in_default_stream": True,
-            },
-        ),
-        (
-            "TensorrtExecutionProvider",
-            {
-                "device_id": 0,
-            },
-        ),
-        (
-            "DmlExecutionProvider",
-            {
-                "device_id": 0,
-            },
-        ),
-    ]
+    cuda_provider: tuple[str, dict[str, Any]] = (
+        "CUDAExecutionProvider",
+        {
+            "device_id": 0,
+            "arena_extend_strategy": "kNextPowerOfTwo",
+            # 注意: "DEFAULT" 在 cuDNN Frontend 中映射为 HeurMode FALLBACK，
+            # 会触发 "running in Fallback mode. May be extremely slow." 警告
+            "cudnn_conv_algo_search": "HEURISTIC",
+            "do_copy_in_default_stream": True,
+        },
+    )
 
-    # 根据指定的 device 过滤候选列表
-    targets: list[tuple[str, dict[str, Any]]] = []
-    if device == "cuda":
-        targets = [
-            c for c in gpu_provider_candidates if c[0] == "CUDAExecutionProvider"
-        ]
-    elif device == "dml":
-        targets = [c for c in gpu_provider_candidates if c[0] == "DmlExecutionProvider"]
-    elif device == "cpu":
-        targets = []
-    else:  # "auto"
-        targets = gpu_provider_candidates
+    try_cuda = device in ("auto", "cuda")
 
     sess_options = ort.SessionOptions()
     sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
 
-    # 1. 尝试 GPU 执行器
-    for provider_name, provider_opts in targets:
-        if provider_name in available_providers:
-            try:
-                # 仅传入单个 GPU provider + CPU 兜底
-                sess = ort.InferenceSession(
-                    model_path,
-                    sess_options=sess_options,
-                    providers=[(provider_name, provider_opts), "CPUExecutionProvider"],
-                )
-                active = sess.get_providers()
-                if active and active[0] == provider_name:
-                    return sess, provider_name
-            except Exception:
-                pass
+    # 1. 尝试 CUDA 执行器
+    if try_cuda and "CUDAExecutionProvider" in available_providers:
+        try:
+            sess = ort.InferenceSession(
+                model_path,
+                sess_options=sess_options,
+                providers=[cuda_provider, "CPUExecutionProvider"],
+            )
+            active = sess.get_providers()
+            if active and active[0] == "CUDAExecutionProvider":
+                return sess, "CUDAExecutionProvider"
+        except Exception:
+            pass
 
     # 2. 回退到 CPU
     sess = ort.InferenceSession(
@@ -689,9 +664,9 @@ def build_parser(
     )
     parser.add_argument(
         "--device",
-        choices=["auto", "cuda", "dml", "cpu"],
+        choices=["auto", "cuda", "cpu"],
         default="auto",
-        help="指定推理设备 (auto: 优先 GPU/CUDA/DirectML, 自动回退 CPU)",
+        help="指定推理设备 (auto: 优先 CUDA GPU, 自动回退 CPU)",
     )
     parser.add_argument(
         "--batch-size",
@@ -832,29 +807,19 @@ def run(args: argparse.Namespace) -> None:
         model_path, tags_path = get_model_and_tags(cache_dir)
         tag_names, tag_categories = load_tags_csv(tags_path)
 
+        # 尝试设置CUDA环境
+        setup_cuda_env()
         # 启动 ONNX Runtime (GPU 优先策略)
         print(f"[*] 启动 ONNX Runtime 推理会话 (请求模式: {args.device})...")
         session, active_provider = create_inference_session(
             model_path, device=args.device
         )
-        is_gpu = active_provider in (
-            "CUDAExecutionProvider",
-            "TensorrtExecutionProvider",
-            "DmlExecutionProvider",
-        )
+        is_gpu = active_provider == "CUDAExecutionProvider"
 
         if is_gpu:
             print(f"[√] 成功启用 GPU 加速执行器: {active_provider}")
         else:
             print(f"[*] 当前使用执行器: {active_provider}")
-            if args.device != "cpu":
-                print("    [提示] GPU 执行环境未能载入。若您使用的是 NVIDIA 显卡:")
-                print(
-                    "           - 方案1 (推荐，免配直接跑 GPU): 运行 `uv pip install onnxruntime-directml`"
-                )
-                print(
-                    "           - 方案2 (CUDA 原生加速): 安装 NVIDIA CUDA 13.x Toolkit 与 cuDNN 9.x 并配置 PATH"
-                )
 
         batch_size = args.batch_size
         if batch_size <= 0:
