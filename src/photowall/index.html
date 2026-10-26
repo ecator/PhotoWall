@@ -377,7 +377,8 @@
       padding: 0 6px;
     }
 
-    .card-slider {
+    .card-slider,
+    .card-width-slider {
       width: 80px;
       height: 4px;
       border-radius: 2px;
@@ -2032,7 +2033,7 @@
         </div>
 
         <div class="slider-container" title="调整卡片列宽 (180px - 420px)">
-          <input type="range" id="card-width-slider" class="card-slider" min="180" max="420" value="240" />
+          <input type="range" id="card-width-slider" class="card-slider card-width-slider" min="180" max="420" value="240" />
         </div>
 
         <button id="theme-toggle-btn" class="btn-icon" title="切换深色/浅色主题" aria-label="Toggle Theme"></button>
@@ -2293,7 +2294,21 @@
 
       // Layout & UI
       layoutMode: 'masonry', // 'masonry' | 'grid' | 'square'
-      cardMinWidth: 240,
+      cardMinWidth: (() => {
+        try {
+          const saved = localStorage.getItem('PHOTOWALL_CARD_WIDTH');
+          if (saved) {
+            const val = parseInt(saved, 10);
+            if (!isNaN(val)) return Math.max(180, Math.min(420, val));
+          }
+        } catch (e) {}
+        const slider = document.getElementById('card-width-slider');
+        if (slider && slider.value) {
+          const val = parseInt(slider.value, 10);
+          if (!isNaN(val)) return Math.max(180, Math.min(420, val));
+        }
+        return 240;
+      })(),
       isSidebarCollapsed: false,
       collapsedFolders: new Set(),
 
@@ -2335,6 +2350,9 @@
         mouseTimer: null
       }
     };
+
+    // Apply initial card min width immediately to avoid layout jump
+    document.documentElement.style.setProperty('--card-min-width', `${STATE.cardMinWidth}px`);
 
     // Utilities: R6 Requirements
     function formatBytes(bytes) {
@@ -3366,8 +3384,41 @@
     }
 
     function setCardWidth(width) {
-      STATE.cardMinWidth = width;
-      document.documentElement.style.setProperty('--card-min-width', `${width}px`);
+      const parsed = parseInt(width, 10);
+      if (isNaN(parsed)) return;
+      const clamped = Math.max(180, Math.min(420, parsed));
+      STATE.cardMinWidth = clamped;
+      document.documentElement.style.setProperty('--card-min-width', `${clamped}px`);
+      try {
+        localStorage.setItem('PHOTOWALL_CARD_WIDTH', String(clamped));
+      } catch (e) {
+        // Ignore localStorage quota or restriction errors
+      }
+      const slider = document.getElementById('card-width-slider');
+      if (slider && parseInt(slider.value, 10) !== clamped) {
+        slider.value = clamped;
+      }
+    }
+
+    function initCardWidth() {
+      const slider = document.getElementById('card-width-slider');
+      let width = STATE.cardMinWidth;
+      try {
+        const saved = localStorage.getItem('PHOTOWALL_CARD_WIDTH');
+        if (saved !== null && saved !== '') {
+          const val = parseInt(saved, 10);
+          if (!isNaN(val)) width = val;
+        } else if (slider && slider.value) {
+          const val = parseInt(slider.value, 10);
+          if (!isNaN(val)) width = val;
+        }
+      } catch (e) {
+        if (slider && slider.value) {
+          const val = parseInt(slider.value, 10);
+          if (!isNaN(val)) width = val;
+        }
+      }
+      setCardWidth(width);
     }
 
 
@@ -3998,6 +4049,9 @@
       // Initialize theme first so both onboarding and main UI respect theme preference
       applyTheme(STATE.theme);
 
+      // Initialize card width and synchronize CSS variable and slider
+      initCardWidth();
+
       // Check uninitialized or empty state
       const data = window.PHOTO_WALL_DATA;
       if (!data || !data.items || !Array.isArray(data.items) || data.items.length === 0) {
@@ -4176,9 +4230,14 @@
 
       // Card width slider
       const slider = document.getElementById('card-width-slider');
-      slider.addEventListener('input', (e) => {
-        setCardWidth(e.target.value);
-      });
+      if (slider) {
+        slider.addEventListener('input', (e) => {
+          setCardWidth(e.target.value);
+        });
+        slider.addEventListener('change', (e) => {
+          setCardWidth(e.target.value);
+        });
+      }
 
       // Theme toggle
       document.getElementById('theme-toggle-btn').addEventListener('click', toggleTheme);
@@ -4393,6 +4452,11 @@
     } else {
       initApp();
     }
+
+    // Re-synchronize card width on pageshow (handles bfcache or delayed form restoration)
+    window.addEventListener('pageshow', () => {
+      initCardWidth();
+    });
 
   </script>
 </body>
