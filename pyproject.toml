@@ -43,4 +43,5 @@ ignore = [
     "BLE001", # Do not catch blind exception: `Exception`
     "S110",   # `try`-`except`-`pass` detected
     "S112",   # `try`-`except`-`continue` detected
+    "DTZ005", # os.path.getctime returns creation time, which may not be timezone-aware
 ]
