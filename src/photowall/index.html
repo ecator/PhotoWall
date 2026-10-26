@@ -504,21 +504,63 @@
       color: #ffffff;
     }
 
-    /* Directory Tree Container */
-    .tree-container {
-      flex: 1;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding: 8px 0;
+    /* Directory Tree Header & Container */
+    .tree-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px 4px;
+      flex-shrink: 0;
     }
 
     .tree-title {
-      padding: 4px 14px 6px;
       font-size: 0.75rem;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: var(--text-muted);
+      user-select: none;
+    }
+
+    .tree-toggle-all-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6px;
+      font-size: 0.725rem;
+      color: var(--text-muted);
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      user-select: none;
+      line-height: 1.2;
+    }
+
+    .tree-toggle-all-btn:hover:not(:disabled) {
+      background-color: var(--bg-hover);
+      color: var(--text-primary);
+      border-color: var(--border-color);
+    }
+
+    .tree-toggle-all-btn:disabled,
+    .tree-toggle-all-btn.disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .tree-toggle-all-btn .svg-icon {
+      width: 13px;
+      height: 13px;
+    }
+
+    .tree-container {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 4px 0 8px;
     }
 
     .tree-node {
@@ -2018,7 +2060,13 @@
           </button>
         </div>
 
-        <div class="tree-title">目录导航</div>
+        <div class="tree-header">
+          <div class="tree-title">目录导航</div>
+          <button id="tree-toggle-all-btn" class="tree-toggle-all-btn" title="全部展开当前子目录" aria-label="全部展开当前子目录">
+            <span id="tree-toggle-all-icon"></span>
+            <span id="tree-toggle-all-text">全部展开</span>
+          </button>
+        </div>
         <div id="tree-container" class="tree-container"></div>
 
         <div id="sidebar-footer" class="sidebar-footer">
@@ -2218,6 +2266,8 @@
       shuffle: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>`,
       fullscreenExit: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>`,
       subfolder: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M20 18H4V8h16v10zm0-12h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>`,
+      unfoldMore: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 5.83L15.17 9l1.41-1.41L12 3 7.41 7.59 8.83 9 12 5.83zm0 12.34L8.83 15l-1.41 1.41L12 21l4.59-4.59L15.17 15 12 18.17z"/></svg>`,
+      unfoldLess: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M7.41 18.59L8.83 20 12 16.83 15.17 20l1.41-1.41L12 14l-4.59 4.59zm9.18-13.18L15.17 4 12 7.17 8.83 4 7.41 5.41 12 10l4.59-4.59z"/></svg>`,
       arrowUp: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"/></svg>`
     };
 
@@ -2946,6 +2996,99 @@
         fragment.appendChild(node);
       });
       container.appendChild(fragment);
+      updateTreeToggleAllBtn();
+    }
+
+    // Directory Tree Expand/Collapse All Subfolders Logic
+    function getTargetFoldersForCurrentScope() {
+      const cur = STATE.isFavoritesView ? '' : STATE.currentFolder;
+      if (cur === '') {
+        const rootDescendants = STATE.allFolders.filter(f => f.path !== '' && f.subFolderCount > 0);
+        if (rootDescendants.length > 0) {
+          return rootDescendants;
+        }
+        const rootFolder = STATE.allFolders.find(f => f.path === '');
+        if (rootFolder && rootFolder.subFolderCount > 0) {
+          return [rootFolder];
+        }
+        return [];
+      }
+
+      const prefix = cur + '/';
+      const descendants = STATE.allFolders.filter(
+        f => f.path.startsWith(prefix) && f.subFolderCount > 0
+      );
+      if (descendants.length > 0) {
+        return descendants;
+      }
+
+      const curFolder = STATE.allFolders.find(f => f.path === cur);
+      if (curFolder && curFolder.subFolderCount > 0) {
+        return [curFolder];
+      }
+      return [];
+    }
+
+    function toggleAllSubfolders() {
+      const targets = getTargetFoldersForCurrentScope();
+      if (targets.length === 0) return;
+
+      const isAnyCollapsed = targets.some(f => STATE.collapsedFolders.has(f.path));
+
+      if (isAnyCollapsed) {
+        // Expand all target subfolders
+        targets.forEach(f => STATE.collapsedFolders.delete(f.path));
+        // Ensure current folder and ancestors are expanded so targets are visible
+        if (STATE.currentFolder !== '') {
+          STATE.collapsedFolders.delete(STATE.currentFolder);
+          const parts = STATE.currentFolder.split('/');
+          let acc = '';
+          for (let i = 0; i < parts.length - 1; i++) {
+            acc = acc ? `${acc}/${parts[i]}` : parts[i];
+            STATE.collapsedFolders.delete(acc);
+          }
+        }
+        STATE.collapsedFolders.delete('');
+      } else {
+        // Collapse all target subfolders
+        targets.forEach(f => STATE.collapsedFolders.add(f.path));
+      }
+
+      renderDirectoryTree();
+    }
+
+    function updateTreeToggleAllBtn() {
+      const btn = document.getElementById('tree-toggle-all-btn');
+      const iconEl = document.getElementById('tree-toggle-all-icon');
+      const textEl = document.getElementById('tree-toggle-all-text');
+      if (!btn) return;
+
+      const targets = getTargetFoldersForCurrentScope();
+      if (targets.length === 0) {
+        btn.disabled = true;
+        btn.classList.add('disabled');
+        btn.title = '当前文件夹无子目录';
+        btn.setAttribute('aria-label', '当前文件夹无子目录');
+        if (iconEl) iconEl.innerHTML = ICONS.unfoldMore;
+        if (textEl) textEl.textContent = '全部展开';
+        return;
+      }
+
+      btn.disabled = false;
+      btn.classList.remove('disabled');
+
+      const isAnyCollapsed = targets.some(f => STATE.collapsedFolders.has(f.path));
+      if (isAnyCollapsed) {
+        btn.title = '全部展开当前子目录';
+        btn.setAttribute('aria-label', '全部展开当前子目录');
+        if (iconEl) iconEl.innerHTML = ICONS.unfoldMore;
+        if (textEl) textEl.textContent = '全部展开';
+      } else {
+        btn.title = '全部折叠当前子目录';
+        btn.setAttribute('aria-label', '全部折叠当前子目录');
+        if (iconEl) iconEl.innerHTML = ICONS.unfoldLess;
+        if (textEl) textEl.textContent = '全部折叠';
+      }
     }
 
     function selectFolder(path) {
@@ -2961,6 +3104,9 @@
           acc = acc ? `${acc}/${parts[i]}` : parts[i];
           STATE.collapsedFolders.delete(acc);
         }
+        STATE.collapsedFolders.delete(path);
+      } else {
+        STATE.collapsedFolders.delete('');
       }
 
       // Update nav buttons
@@ -3867,6 +4013,13 @@
       STATE.allFolders = data.folders || [];
       STATE.allItems = data.items || [];
 
+      // Default all collapsed: all folders with children (except root '') are collapsed
+      STATE.collapsedFolders = new Set(
+        STATE.allFolders
+          .filter(f => f.path !== '' && f.subFolderCount > 0)
+          .map(f => f.path)
+      );
+
       // Dynamic Title
       const meta = data.meta || {};
       const pageTitle = meta.title || 'PhotoWall';
@@ -4033,6 +4186,12 @@
       // Sidebar Nav Shortcuts
       document.getElementById('nav-all-btn').addEventListener('click', () => selectFolder(''));
       document.getElementById('nav-fav-btn').addEventListener('click', selectFavorites);
+
+      // Directory Tree Toggle All Subfolders
+      const treeToggleBtn = document.getElementById('tree-toggle-all-btn');
+      if (treeToggleBtn) {
+        treeToggleBtn.addEventListener('click', toggleAllSubfolders);
+      }
 
       // Media type filter buttons
       document.querySelectorAll('.type-filter-btn').forEach(btn => {
