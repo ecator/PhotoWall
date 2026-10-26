@@ -842,14 +842,16 @@ def run(args: argparse.Namespace) -> None:
         checkpoint_buffer: dict[str, dict[str, Any]] = {}
         checkpoint_counter = 0
 
-        def flush_checkpoint(counter: int) -> None:
+        def flush_checkpoint(counter: int) -> int:
             nonlocal checkpoint_buffer
             if not checkpoint_buffer:
-                return
+                return 0
+            count = len(checkpoint_buffer)
             ts = int(datetime.now().timestamp())
             cid = f"{ts}_{counter:04d}"
             save_checkpoint(checkpoint_dir, checkpoint_buffer, cid)
             checkpoint_buffer = {}
+            return count
 
         def record_result(rel_path: str, item_data: dict[str, Any]) -> None:
             nonlocal checkpoint_counter
@@ -989,9 +991,9 @@ def run(args: argparse.Namespace) -> None:
             print("\n[!] 检测到用户中断操作 (Ctrl+C)。")
             if checkpoint_buffer:
                 checkpoint_counter += 1
-                flush_checkpoint(checkpoint_counter)
+                saved_count = flush_checkpoint(checkpoint_counter)
                 print(
-                    f"[*] 已将未满分块的临时进度 ({len(checkpoint_buffer)} 张图片) 保存至断点缓存: {checkpoint_dir.resolve()}"
+                    f"[*] 已将未满分块的临时进度 ({saved_count} 张图片) 保存至断点缓存: {checkpoint_dir.resolve()}"
                 )
             print("[*] 下次启动打标时将自动从断点继续。")
             sys.exit(130)

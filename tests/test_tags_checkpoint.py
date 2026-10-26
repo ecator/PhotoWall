@@ -180,7 +180,7 @@ def test_tags_resume_from_checkpoint_and_cleanup(tmp_path, monkeypatch):
     assert len(remaining_checkpoints) == 0
 
 
-def test_tags_keyboard_interrupt_saves_remaining_buffer(tmp_path, monkeypatch):
+def test_tags_keyboard_interrupt_saves_remaining_buffer(tmp_path, monkeypatch, capsys):
     assets_dir = tmp_path / "assets"
     img1 = assets_dir / "pic1.jpg"
     img2 = assets_dir / "pic2.jpg"
@@ -238,6 +238,9 @@ def test_tags_keyboard_interrupt_saves_remaining_buffer(tmp_path, monkeypatch):
     assert len(saved_checkpoints) == 1
     content = json.loads(saved_checkpoints[0].read_text(encoding="utf-8"))
     assert "pic1.jpg" in content
+
+    captured = capsys.readouterr()
+    assert "已将未满分块的临时进度 (1 张图片) 保存至断点缓存" in captured.out
 
 
 def test_tags_force_clears_existing_checkpoints(tmp_path, monkeypatch):
