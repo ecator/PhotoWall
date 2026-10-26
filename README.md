@@ -23,8 +23,10 @@
 **1. 安装**（需要 Python 3.14）
 
 ```bash
-uv tool install photowall
+uv tool install -p 3.14 photowall
 ```
+
+> `uv tool install` 默认使用全局 / 最新的 Python，不会根据 `requires-python` 自动选择解释器，因此需显式指定 `-p 3.14`（未安装时 uv 会自动下载）。
 
 **2. 准备相册目录**
 
