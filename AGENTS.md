@@ -8,6 +8,7 @@
 - **`photowall.index`**：全流程构建入口，协调 `tags` 与 `assets` 并部署内置 `index.html`。
 - **`photowall.tags`**：基于 WD14 Tagger (ONNX) 增量生成 AI 视觉标签，支持断点缓存，输出 `tags.json`。
 - **`photowall.assets`**：扫描 `assets/` 媒体文件，解析 Exif/尺寸/时长，融合标签输出 `assets.js`。
+- **`photowall.scanner`**：统一媒体扫描器与格式定义（支持软链接/Junction 递归遍历与自然排序）。
 - **`photowall.version`**：动态版本号管理（支持 VCS 与包元数据）。
 - **`photowall/index.html`**：内置的前端单页应用模板。
 

@@ -397,3 +397,136 @@ def test_tags_run_banner_includes_version(tmp_path, capsys, monkeypatch):
     tags.run(tags_args)
     captured = capsys.readouterr()
     assert f"PhotoWall v{__version__}" in captured.out
+
+
+def test_assets_and_tags_scan_linked_directory(tmp_path, monkeypatch):
+    """验证 assets 与 tags 扫描均能正确遍历软链接/junction 目录。"""
+    import sys
+
+    assets_dir = tmp_path / "assets"
+    assets_dir.mkdir()
+    external_dir = tmp_path / "external_media"
+    external_dir.mkdir()
+
+    # 创建外部测试图片 (最小有效 1x1 JPEG)
+    img = external_dir / "external_pic.jpg"
+    img.write_bytes(
+        b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
+        b"\xff\xdb\x00C\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07\x07\t\t\x08\n"
+        b"\x0c\x14\r\x0c\x0b\x0b\x0c\x19\x12\x13\x0f\x14\x1d\x1a\x1f\x1e\x1d\x1a"
+        b"\x1c\x1c $.' \",#\x1c\x1c(7),01444\x1f'9=82<.342\xff\xc0\x00\x0b\x08"
+        b"\x00\x01\x00\x01\x01\x01\x11\x00\xff\xc4\x00\x1f\x00\x00\x01\x05\x01"
+        b"\x01\x01\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x01\x02\x03\x04"
+        b"\x05\x06\x07\x08\t\n\x0b\xff\xda\x00\x08\x01\x01\x00\x00?\x00\xbf\x00\xff\xd9"
+    )
+
+    link_target = assets_dir / "linked_album"
+    link_created = False
+    try:
+        link_target.symlink_to(external_dir, target_is_directory=True)
+        link_created = True
+    except OSError:
+        if sys.platform == "win32":
+            import _winapi
+
+            _winapi.CreateJunction(str(external_dir), str(link_target))
+            link_created = True
+
+    if not link_created:
+        pytest.skip("当前环境不支持创建软链接或 Junction")
+
+    # 1. 测试 assets.run 是否能够扫描出软链接目录下的图片
+    args_assets = argparse.Namespace(
+        command="assets",
+        dir=tmp_path,
+        title="测试链接相册",
+        force=False,
+    )
+    assets.run(args_assets)
+
+    output_file = tmp_path / "assets.js"
+    assert output_file.exists()
+    content = output_file.read_text(encoding="utf-8")
+    assert "external_pic.jpg" in content
+    assert '"folder": "linked_album"' in content
+
+    # 2. 测试 tags.run 是否能够扫描出软链接目录下的图片并打标/过滤
+    stat = img.stat()
+    init_tags = {
+        "files": {
+            "linked_album/external_pic.jpg": {
+                "size": stat.st_size,
+                "mtime": int(stat.st_mtime),
+                "tags": ["cat_ears"],
+                "raw": {"cat_ears": 0.95},
+            }
+        }
+    }
+    (tmp_path / "tags.json").write_text(json.dumps(init_tags), encoding="utf-8")
+
+    monkeypatch.setattr(tags, "load_translations", lambda *args, **kwargs: {})
+    tags_args = argparse.Namespace(
+        command="tags",
+        dir=tmp_path,
+        force=False,
+        filter=True,
+        device="cpu",
+        batch_size=1,
+        verbose=True,
+        checkpoint_interval=100,
+    )
+    tags.run(tags_args)
+    tags_file = tmp_path / "tags.json"
+    assert tags_file.exists()
+    tags_data = json.loads(tags_file.read_text(encoding="utf-8"))
+    assert "linked_album/external_pic.jpg" in tags_data["files"]
+
+
+def test_assets_broken_link_ignored(tmp_path):
+    """验证失效的软链接/Junction 不会导致扫描崩溃，并能正常跳过。"""
+    import sys
+
+    assets_dir = tmp_path / "assets"
+    assets_dir.mkdir()
+    valid_pic = assets_dir / "valid.jpg"
+    valid_pic.write_bytes(
+        b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
+        b"\xff\xdb\x00C\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07\x07\t\t\x08\n"
+        b"\x0c\x14\r\x0c\x0b\x0b\x0c\x19\x12\x13\x0f\x14\x1d\x1a\x1f\x1e\x1d\x1a"
+        b"\x1c\x1c $.' \",#\x1c\x1c(7),01444\x1f'9=82<.342\xff\xc0\x00\x0b\x08"
+        b"\x00\x01\x00\x01\x01\x01\x11\x00\xff\xc4\x00\x1f\x00\x00\x01\x05\x01"
+        b"\x01\x01\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x01\x02\x03\x04"
+        b"\x05\x06\x07\x08\t\n\x0b\xff\xda\x00\x08\x01\x01\x00\x00?\x00\xbf\x00\xff\xd9"
+    )
+
+    temp_target = tmp_path / "temp_target"
+    temp_target.mkdir()
+    broken_link = assets_dir / "broken_link"
+
+    link_created = False
+    try:
+        broken_link.symlink_to(temp_target, target_is_directory=True)
+        link_created = True
+    except OSError:
+        if sys.platform == "win32":
+            import _winapi
+
+            _winapi.CreateJunction(str(temp_target), str(broken_link))
+            link_created = True
+
+    # 删除目标目录制造断链
+    temp_target.rmdir()
+
+    if link_created:
+        args_assets = argparse.Namespace(
+            command="assets",
+            dir=tmp_path,
+            title="测试断链",
+            force=False,
+        )
+        # 不应抛出异常
+        assets.run(args_assets)
+        output_file = tmp_path / "assets.js"
+        assert output_file.exists()
+        content = output_file.read_text(encoding="utf-8")
+        assert "valid.jpg" in content

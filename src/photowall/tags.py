@@ -28,6 +28,7 @@ from PIL import Image
 from tqdm import tqdm
 
 from .gpu_env import setup_cuda_env
+from .scanner import scan_image_files
 from .version import __version__
 
 # ==============================================================================
@@ -90,9 +91,6 @@ ALIASES: dict[str, str] = {
     "猫耳": "兽耳",
     "狐狸耳": "兽耳",
 }
-
-# 支持的图片格式 (包含 GIF 动图，Pillow 会自动抽取 GIF 第一帧用于打标)
-IMAGE_EXTENSIONS: set[str] = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
 
 # 基础内置常用 Danbooru 标签汉化字典 (无需额外下载，开箱即用)
 BUILTIN_TRANSLATIONS: dict[str, str] = {
@@ -763,11 +761,14 @@ def run(args: argparse.Namespace) -> None:
     # 2. 扫描 assets 目录下的所有图片
     print(f"[*] 扫描目录: {assets_dir.resolve()}")
     disk_images: dict[str, tuple[Path, int, int]] = {}
-    for p in assets_dir.rglob("*"):
-        if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS:
-            rel_path = p.relative_to(assets_dir).as_posix()
+    for p in scan_image_files(assets_dir):
+        rel_path = p.relative_to(assets_dir).as_posix()
+        try:
             stat = p.stat()
             disk_images[rel_path] = (p, stat.st_size, int(stat.st_mtime))
+        except OSError as e:
+            if getattr(args, "verbose", False):
+                print(f"[警告] 读取图片属性失败: {p} ({e})")
 
     # 3. 统计需要 AI 推理的文件与缓存命中文件
     cached_items: list[tuple[str, Path]] = []

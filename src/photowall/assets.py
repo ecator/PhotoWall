@@ -31,18 +31,12 @@ from typing import Any
 from PIL import ExifTags, Image
 from tqdm import tqdm
 
+from .scanner import (
+    is_video_file,
+    natural_sort_key,
+    scan_media_files,
+)
 from .version import __version__
-
-# 支持的文件后缀定义
-IMAGE_EXTENSIONS: set[str] = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
-VIDEO_EXTENSIONS: set[str] = {".mp4", ".webm"}
-
-
-def natural_sort_key(s: str) -> list[Any]:
-    """自然排序键函数 (使 2.jpg 排在 10.jpg 前面，对中文与英文路径均生效)。"""
-    return [
-        int(text) if text.isdigit() else text.lower() for text in re.split(r"(\d+)", s)
-    ]
 
 
 def encode_url_path(rel_path: str) -> str:
@@ -318,15 +312,7 @@ def run(args: argparse.Namespace) -> None:
 
     # 3. 扫描 assets 目录下的所有媒体文件
     print(f"[*] 扫描资源目录: {assets_dir.resolve()}")
-    raw_files: list[Path] = []
-    for p in assets_dir.rglob("*"):
-        if p.is_file():
-            ext = p.suffix.lower()
-            if ext in IMAGE_EXTENSIONS or ext in VIDEO_EXTENSIONS:
-                raw_files.append(p)
-
-    # 自然排序
-    raw_files.sort(key=lambda p: natural_sort_key(p.relative_to(assets_dir).as_posix()))
+    raw_files = scan_media_files(assets_dir)
     print(f"[*] 扫描到媒体文件总数: {len(raw_files)}")
 
     # 4. 统计文件属性并比对缓存 (检测新增、过期及已删除)
@@ -337,11 +323,15 @@ def run(args: argparse.Namespace) -> None:
     for p in raw_files:
         rel_to_assets = p.relative_to(assets_dir).as_posix()
         current_disk_set.add(rel_to_assets)
-        file_stat = p.stat()
-        file_size = file_stat.st_size
-        file_mtime = int(file_stat.st_mtime)
+        try:
+            file_stat = p.stat()
+            file_size = file_stat.st_size
+            file_mtime = int(file_stat.st_mtime)
+        except OSError as e:
+            print(f"[警告] 无法读取文件状态: {p} ({e})")
+            continue
         ext = p.suffix.lower()
-        media_type = "video" if ext in VIDEO_EXTENSIONS else "image"
+        media_type = "video" if is_video_file(p) else "image"
 
         file_tuple = (p, rel_to_assets, media_type, file_size, file_mtime)
         file_info_list.append(file_tuple)
