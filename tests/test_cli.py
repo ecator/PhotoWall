@@ -193,7 +193,22 @@ def test_copy_index_html(tmp_path):
     assert out_file.is_file()
     content = out_file.read_text(encoding="utf-8")
     assert "<!DOCTYPE html>" in content or "<html" in content
-    assert 'src="assets.js"' in content
+    assert "/*window.PHOTO_WALL_DATA = {};*/" in content
+
+    # 当 .photowall/assets.json 存在时，应自动替换占位符
+    cache_dir = tmp_path / ".photowall"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    dummy_assets = {"meta": {"title": "InjectedTitle"}, "items": []}
+    (cache_dir / "assets.json").write_text(
+        json.dumps(dummy_assets, ensure_ascii=False), encoding="utf-8"
+    )
+    out_file_injected = copy_index_html(tmp_path)
+    injected_content = out_file_injected.read_text(encoding="utf-8")
+    assert "/*window.PHOTO_WALL_DATA = {};*/" not in injected_content
+    assert (
+        'window.PHOTO_WALL_DATA = {"meta": {"title": "InjectedTitle"}, "items": []};'
+        in injected_content
+    )
 
     # Test template lookup
     tpl_path = get_template_index_html_path()
@@ -224,12 +239,16 @@ def test_index_run_success(tmp_path, monkeypatch):
 
     assert mock_tags_run.called
 
-    output_js = tmp_path / "assets.js"
-    assert output_js.exists()
+    output_json = tmp_path / ".photowall" / "assets.json"
+    assert output_json.exists()
+    assert not (tmp_path / "assets.js").exists()
 
     output_html = tmp_path / "index.html"
     assert output_html.exists()
-    assert 'src="assets.js"' in output_html.read_text(encoding="utf-8")
+    html_text = output_html.read_text(encoding="utf-8")
+    assert "/*window.PHOTO_WALL_DATA = {};*/" not in html_text
+    assert "window.PHOTO_WALL_DATA = {" in html_text
+    assert '"title": "测试全量相册"' in html_text
 
 
 def test_assets_run_success(tmp_path):
@@ -244,18 +263,10 @@ def test_assets_run_success(tmp_path):
     )
     assets.run(args)
 
-    output_file = tmp_path / "assets.js"
+    output_file = tmp_path / ".photowall" / "assets.json"
     assert output_file.exists()
     content = output_file.read_text(encoding="utf-8")
-    assert content.startswith(
-        "// 由 photowall assets 自动生成\nwindow.PHOTO_WALL_DATA = "
-    )
-
-    prefix = "// 由 photowall assets 自动生成\nwindow.PHOTO_WALL_DATA = "
-    suffix = ";\n"
-    assert content.endswith(suffix)
-    json_str = content[len(prefix) : -len(suffix)]
-    data = json.loads(json_str)
+    data = json.loads(content)
 
     assert data["meta"]["title"] == "临时测试相册"
     assert data["meta"]["totalCount"] == 0
@@ -278,7 +289,7 @@ def test_assets_run_default_title_from_home(tmp_path):
     )
     assets.run(args)
 
-    content = (album_dir / "assets.js").read_text(encoding="utf-8")
+    content = (album_dir / ".photowall" / "assets.json").read_text(encoding="utf-8")
     assert '"title": "MySpecialAlbum"' in content
 
 
@@ -304,8 +315,10 @@ def test_index_run_default_title_from_home(tmp_path, monkeypatch):
     )
     index.run(args)
 
-    content = (album_dir / "assets.js").read_text(encoding="utf-8")
+    content = (album_dir / ".photowall" / "assets.json").read_text(encoding="utf-8")
     assert '"title": "SummerVacation"' in content
+    html_content = (album_dir / "index.html").read_text(encoding="utf-8")
+    assert '"title": "SummerVacation"' in html_content
 
 
 def test_cli_version_subcommand(capsys):
@@ -444,7 +457,7 @@ def test_assets_and_tags_scan_linked_directory(tmp_path, monkeypatch):
     )
     assets.run(args_assets)
 
-    output_file = tmp_path / "assets.js"
+    output_file = tmp_path / ".photowall" / "assets.json"
     assert output_file.exists()
     content = output_file.read_text(encoding="utf-8")
     assert "external_pic.jpg" in content
@@ -462,7 +475,9 @@ def test_assets_and_tags_scan_linked_directory(tmp_path, monkeypatch):
             }
         }
     }
-    (tmp_path / "tags.json").write_text(json.dumps(init_tags), encoding="utf-8")
+    tags_file = tmp_path / ".photowall" / "tags.json"
+    tags_file.parent.mkdir(parents=True, exist_ok=True)
+    tags_file.write_text(json.dumps(init_tags), encoding="utf-8")
 
     monkeypatch.setattr(tags, "load_translations", lambda *args, **kwargs: {})
     tags_args = argparse.Namespace(
@@ -476,7 +491,6 @@ def test_assets_and_tags_scan_linked_directory(tmp_path, monkeypatch):
         checkpoint_interval=100,
     )
     tags.run(tags_args)
-    tags_file = tmp_path / "tags.json"
     assert tags_file.exists()
     tags_data = json.loads(tags_file.read_text(encoding="utf-8"))
     assert "linked_album/external_pic.jpg" in tags_data["files"]
@@ -526,7 +540,7 @@ def test_assets_broken_link_ignored(tmp_path):
         )
         # 不应抛出异常
         assets.run(args_assets)
-        output_file = tmp_path / "assets.js"
+        output_file = tmp_path / ".photowall" / "assets.json"
         assert output_file.exists()
         content = output_file.read_text(encoding="utf-8")
         assert "valid.jpg" in content

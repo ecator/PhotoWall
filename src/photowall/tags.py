@@ -2,7 +2,7 @@
 tags.py - 照片墙 WD14 Tagger 自动增量打标脚本
 
 使用方法:
-    photowall tags            # 增量扫描 assets/ 并生成/更新 tags.json
+    photowall tags            # 增量扫描 assets/ 并生成/更新 .photowall/tags.json
     photowall tags --force    # 忽略缓存，强制重新对所有图片进行 AI 推理
     photowall tags --filter   # 不调用 AI 模型，仅根据最新的黑名单/同义词/阈值重算 tags
 
@@ -27,6 +27,17 @@ from huggingface_hub import hf_hub_download
 from PIL import Image
 from tqdm import tqdm
 
+from .checkpoints import (
+    DEFAULT_CHECKPOINT_INTERVAL,
+    cleanup_expired_checkpoints,
+    load_checkpoints,
+)
+from .checkpoints import (
+    get_checkpoint_dir as _get_checkpoint_dir,
+)
+from .checkpoints import (
+    save_checkpoint as _save_checkpoint,
+)
 from .gpu_env import setup_cuda_env
 from .scanner import scan_image_files
 from .version import __version__
@@ -50,7 +61,6 @@ MAX_TAGS_PER_IMAGE = 6  # 单张图片最终保留的最大标签数量 (照片�
 MAX_RAW_TAGS_PER_IMAGE = (
     10  # 单张图片 raw 缓存最多保留的条目数 (双重防线，防止单图臃肿)
 )
-DEFAULT_CHECKPOINT_INTERVAL = 100  # 默认每处理 100 张图片保存一个断点缓存 JSON
 
 # 全局黑名单 (中英文均可匹配，命中的标签不会出现在 tags 中)
 BLACKLIST: set[str] = {
@@ -567,34 +577,13 @@ def filter_tags(
 
 
 # ==============================================================================
-# 4. 临时断点缓存管理 (.photowall/tags/*.json)
+# 4. 临时断点缓存管理 (.photowall/checkpoints/tags/tags_*.json)
 # ==============================================================================
 
 
 def get_checkpoint_dir(home_dir: Path) -> Path:
-    """获取断点缓存目录 (.photowall/tags)。"""
-    return home_dir / ".photowall" / "tags"
-
-
-def load_checkpoints(checkpoint_dir: Path) -> dict[str, dict[str, Any]]:
-    """
-    扫描并加载 .photowall/tags 目录下的所有临时 checkpoint JSON 文件。
-    返回合并后的图片元数据字典。
-    """
-    merged: dict[str, dict[str, Any]] = {}
-    if not checkpoint_dir.is_dir():
-        return merged
-
-    json_files = sorted(checkpoint_dir.glob("*.json"))
-    for jf in json_files:
-        try:
-            with open(jf, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, dict):
-                    merged.update(data)
-        except Exception as e:
-            print(f"[警告] 读取断点缓存文件 {jf.name} 失败: {e}")
-    return merged
+    """获取 tags 断点缓存目录 (.photowall/checkpoints/tags)。"""
+    return _get_checkpoint_dir(home_dir, "tags")
 
 
 def save_checkpoint(
@@ -602,35 +591,8 @@ def save_checkpoint(
     chunk_data: dict[str, dict[str, Any]],
     chunk_id: str,
 ) -> Path | None:
-    """原子化写入单个断点缓存 JSON 文件。"""
-    if not chunk_data:
-        return None
-    checkpoint_dir.mkdir(parents=True, exist_ok=True)
-    target_file = checkpoint_dir / f"checkpoint_{chunk_id}.json"
-    temp_file = checkpoint_dir / f"checkpoint_{chunk_id}.json.tmp"
-    try:
-        with open(temp_file, "w", encoding="utf-8") as f:
-            json.dump(chunk_data, f, ensure_ascii=False, indent=2)
-        temp_file.replace(target_file)
-        return target_file
-    except Exception as e:
-        print(f"\n[警告] 保存断点缓存失败 ({target_file.name}): {e}")
-        return None
-
-
-def clear_checkpoints(checkpoint_dir: Path) -> int:
-    """清空断点缓存目录下的所有临时 JSON 及 TMP 文件。"""
-    if not checkpoint_dir.is_dir():
-        return 0
-    count = 0
-    for f in checkpoint_dir.iterdir():
-        if f.is_file() and (f.suffix == ".json" or f.name.endswith(".tmp")):
-            try:
-                f.unlink()
-                count += 1
-            except Exception as e:
-                print(f"[警告] 清理断点临时文件 {f.name} 失败: {e}")
-    return count
+    """原子化写入单个 tags 断点缓存 JSON 文件 (tags_xxx.json)。"""
+    return _save_checkpoint(checkpoint_dir, chunk_data, chunk_id, prefix="tags")
 
 
 # ==============================================================================
@@ -693,8 +655,10 @@ def run(args: argparse.Namespace) -> None:
         (getattr(args, "home", None) or getattr(args, "dir", None)) or Path.cwd()
     ).resolve()
     assets_dir = home_dir / "assets"
-    tags_file = home_dir / "tags.json"
-    cache_dir = home_dir / ".photowall" / "huggingface"
+    media_cache_dir = home_dir / ".photowall"
+    media_cache_dir.mkdir(parents=True, exist_ok=True)
+    tags_file = media_cache_dir / "tags.json"
+    cache_dir = media_cache_dir / "huggingface"
     checkpoint_dir = get_checkpoint_dir(home_dir)
     checkpoint_interval = getattr(
         args, "checkpoint_interval", DEFAULT_CHECKPOINT_INTERVAL
@@ -708,10 +672,9 @@ def run(args: argparse.Namespace) -> None:
 
     print(f"[*] PhotoWall v{__version__} - 开始标签扫描与处理")
 
-    translations_cache_dir = home_dir / ".photowall"
-    translations = load_translations(home_dir, translations_cache_dir)
+    translations = load_translations(home_dir, media_cache_dir)
 
-    # 1. 加载既有的 tags.json 缓存
+    # 1. 加载既有的 .photowall/tags.json 缓存
     cached_data: dict[str, Any] = {"meta": {}, "files": {}}
     if tags_file.exists():
         try:
@@ -746,11 +709,9 @@ def run(args: argparse.Namespace) -> None:
 
     if need_full_rebuild:
         files_cache.clear()
-        cleaned = clear_checkpoints(checkpoint_dir)
-        if cleaned > 0:
-            print(f"[*] 强制重建模式，已清空历史断点缓存 ({cleaned} 个分块文件)")
+        print("[*] 强制重建模式，忽略已有缓存与断点数据")
     else:
-        # 加载断点缓存 (.photowall/tags/*.json)
+        # 加载断点缓存 (.photowall/checkpoints/tags/tags_*.json) 并合并
         checkpoint_data = load_checkpoints(checkpoint_dir)
         if checkpoint_data:
             print(
@@ -848,7 +809,7 @@ def run(args: argparse.Namespace) -> None:
             if not checkpoint_buffer:
                 return 0
             count = len(checkpoint_buffer)
-            ts = int(datetime.now().timestamp())
+            ts = int(datetime.now().timestamp() * 1000)
             cid = f"{ts}_{counter:04d}"
             save_checkpoint(checkpoint_dir, checkpoint_buffer, cid)
             checkpoint_buffer = {}
@@ -884,7 +845,6 @@ def run(args: argparse.Namespace) -> None:
                                 "size": size,
                                 "mtime": mtime,
                                 "raw": {},
-                                "tags": [],
                             }
                             record_result(rel_path, item_data)
                             pbar.update(1)
@@ -933,7 +893,6 @@ def run(args: argparse.Namespace) -> None:
                                 "size": size,
                                 "mtime": mtime,
                                 "raw": raw_dict,
-                                "tags": [],
                             }
                             record_result(rel_path, item_data)
                             pbar.update(1)
@@ -966,7 +925,6 @@ def run(args: argparse.Namespace) -> None:
                                     "size": size,
                                     "mtime": mtime,
                                     "raw": raw_dict,
-                                    "tags": [],
                                 }
                                 record_result(rel_path, item_data)
                             except Exception as sub_e:
@@ -977,7 +935,6 @@ def run(args: argparse.Namespace) -> None:
                                     "size": size,
                                     "mtime": mtime,
                                     "raw": {},
-                                    "tags": [],
                                 }
                                 record_result(rel_path, item_data)
                             finally:
@@ -1042,7 +999,7 @@ def run(args: argparse.Namespace) -> None:
         "files": updated_files,
     }
 
-    temp_tags_file = home_dir / "tags.json.tmp"
+    temp_tags_file = media_cache_dir / "tags.json.tmp"
     with open(temp_tags_file, "w", encoding="utf-8") as f:
         json.dump(result_data, f, ensure_ascii=False, indent=2)
     temp_tags_file.replace(tags_file)
@@ -1051,11 +1008,11 @@ def run(args: argparse.Namespace) -> None:
         f"[√] 标签缓存已写入: {tags_file.resolve()} (共计索引 {len(updated_files)} 张图片)"
     )
 
-    # 7. 清理临时断点缓存
-    cleaned_count = clear_checkpoints(checkpoint_dir)
+    # 7. 清理超过 7 天的过期断点缓存文件
+    cleaned_count = cleanup_expired_checkpoints(checkpoint_dir)
     if cleaned_count > 0:
         print(
-            f"[*] 标签生成完毕，已清理 {cleaned_count} 个断点分块缓存文件: {checkpoint_dir.resolve()}"
+            f"[*] 已清理 {cleaned_count} 个过期断点分块缓存文件: {checkpoint_dir.resolve()}"
         )
 
 

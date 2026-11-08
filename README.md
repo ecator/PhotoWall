@@ -6,7 +6,7 @@
 
 ## ✨ 特性
 
-- **纯本地、零服务端**：最终产物只有 `index.html` + `assets.js`，浏览器直接打开即可，方便拷贝、归档与分享。
+- **纯本地、零服务端**：最终相册根目录只保留 `assets/` 与内嵌元数据的 `index.html`，浏览器直接打开即可，方便拷贝、归档与分享。
 - **AI 自动打标**：内置 [WD14 Tagger](https://huggingface.co/SmilingWolf/wd-swinv2-tagger-v3)（ONNX），自动识别画面特征并翻译为中文标签。
 - **增量与断点续传**：仅对新增或修改过的文件进行推理与解析，中断后可从断点继续，大相册也能快速更新。
 - **GPU 加速**：优先使用 CUDA 加速推理，若无可用 GPU 环境自动回退到 CPU。
@@ -62,37 +62,35 @@ photowall index
 ```text
 我的相册/
 ├── assets/        # 你的媒体文件（不会被修改）
-├── .photowall/    # 缓存目录：模型、词库、断点、元数据缓存
-├── tags.json      # AI 标签缓存
-├── assets.js      # 前端读取的媒体元数据
-└── index.html     # 相册网页入口
+├── .photowall/    # 缓存与中间产物目录：assets.json、tags.json、checkpoints/、模型与词库
+└── index.html     # 相册网页入口（已内嵌媒体元数据）
 ```
 
 > [!TIP]
-> 分享或归档时只需保留 `assets/`、`assets.js` 和 `index.html`；`.photowall/` 与 `tags.json` 仅用于加速下次构建。
+> 分享或归档时只需保留 `assets/` 和 `index.html`；`.photowall/` 仅用于加速下次增量构建。
 
 ## 🛠️ 命令参考
 
-| 命令                 | 说明                                                       |
-| -------------------- | ---------------------------------------------------------- |
-| `photowall index`    | 一键全量构建：AI 打标 → 生成 `assets.js` → 输出 `index.html` |
-| `photowall tags`     | 仅执行 AI 打标，生成 / 更新 `tags.json`                     |
-| `photowall assets`   | 仅扫描媒体并融合标签，生成 `assets.js`                      |
-| `photowall version`  | 显示版本号（等同于 `photowall -V`）                         |
+| 命令                 | 说明                                                                       |
+| -------------------- | -------------------------------------------------------------------------- |
+| `photowall index`    | 一键全量构建：AI 打标 → 生成 `.photowall/assets.json` → 输出 `index.html` |
+| `photowall tags`     | 仅执行 AI 打标，生成 / 更新 `.photowall/tags.json`                         |
+| `photowall assets`   | 仅扫描媒体并融合标签，生成 `.photowall/assets.json`                        |
+| `photowall version`  | 显示版本号（等同于 `photowall -V`）                                        |
 
 ### `photowall index` 常用参数
 
-| 参数                        | 说明                                                       |
-| --------------------------- | ---------------------------------------------------------- |
-| `--home`, `-d <目录>`       | 相册根目录，默认为当前目录                                 |
-| `--title <标题>`            | 相册标题，默认使用相册文件夹名                             |
-| `--skip-tags`               | 跳过 AI 打标，仅更新 `assets.js` 与 `index.html`（速度最快） |
-| `--force`                   | 忽略所有缓存，强制重新推理标签并重新解析媒体               |
-| `--filter`                  | 不调用模型，仅根据最新过滤规则与翻译重算标签               |
-| `--device <设备>`           | 推理设备：`auto`（默认）/ `cuda` / `cpu`                     |
-| `--batch-size <N>`          | 推理批大小，默认 `0` 自动选择（GPU 为 4，CPU 为 1）          |
-| `--checkpoint-interval <N>` | 每处理 N 张图片保存一次断点，默认 `100`                     |
-| `-v`, `--verbose`           | 输出每个文件的详细路径与缓存状态                           |
+| 参数                        | 说明                                                            |
+| --------------------------- | --------------------------------------------------------------- |
+| `--home`, `-d <目录>`       | 相册根目录，默认为当前目录                                      |
+| `--title <标题>`            | 相册标题，默认使用相册文件夹名                                  |
+| `--skip-tags`               | 跳过 AI 打标，仅更新 `assets.json` 与 `index.html`（速度最快）  |
+| `--force`                   | 忽略所有缓存，强制重新推理标签并重新解析媒体                    |
+| `--filter`                  | 不调用模型，仅根据最新过滤规则与翻译重算标签                    |
+| `--device <设备>`           | 推理设备：`auto`（默认）/ `cuda` / `cpu`                        |
+| `--batch-size <N>`          | 推理批大小，默认 `0` 自动选择（GPU 为 4，CPU 为 1）             |
+| `--checkpoint-interval <N>` | 每处理 N 个未命中缓存的文件保存一次断点，默认 `100`             |
+| `-v`, `--verbose`           | 输出每个文件的详细路径与缓存状态                                |
 
 > 子命令 `tags`、`assets` 的参数是上述参数的子集，可通过 `photowall <命令> -h` 查看。
 
@@ -131,7 +129,7 @@ photowall index
 <details>
 <summary><b>打标中途被中断了怎么办？</b></summary>
 
-直接重新运行同一条命令即可，已完成的部分会从 `.photowall/tags/` 断点缓存中恢复。
+直接重新运行同一条命令即可，已完成的部分会从 `.photowall/checkpoints/` 断点缓存中自动恢复合并。
 
 </details>
 

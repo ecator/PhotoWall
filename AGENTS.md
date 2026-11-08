@@ -5,20 +5,21 @@
 ## 架构与核心模块
 
 - **`photowall.cli`**：CLI 统一入口，提供 `index`、`assets`、`tags`、`version` 子命令。
-- **`photowall.index`**：全流程构建入口，协调 `tags` 与 `assets` 并部署内置 `index.html`。
-- **`photowall.tags`**：基于 WD14 Tagger (ONNX) 增量生成 AI 视觉标签，支持断点缓存，输出 `tags.json`。
-- **`photowall.assets`**：扫描 `assets/` 媒体文件，解析 Exif/尺寸/时长，融合标签输出 `assets.js`。
+- **`photowall.index`**：全流程构建入口，协调 `tags` 与 `assets` 并将 `assets.json` 注入输出 `index.html`。
+- **`photowall.tags`**：基于 WD14 Tagger (ONNX) 增量生成 AI 视觉标签，支持断点缓存，输出 `.photowall/tags.json`。
+- **`photowall.assets`**：扫描 `assets/` 媒体文件，解析 Exif/尺寸/时长，融合标签输出 `.photowall/assets.json`。
+- **`photowall.checkpoints`**：统一断点缓存管理（`.photowall/checkpoints/{assets,tags}/`），支持增量合并与 7 天过期清理。
 - **`photowall.scanner`**：统一媒体扫描器与格式定义（支持软链接/Junction 递归遍历与自然排序）。
 - **`photowall.version`**：动态版本号管理（支持 VCS 与包元数据）。
-- **`photowall/index.html`**：内置的前端单页应用模板。
+- **`photowall/index.html`**：内置的前端单页应用模板（含 `/*window.PHOTO_WALL_DATA = {};*/` 注入占位符）。
 
 ## 数据流与核心产物
 
 ```
 assets/ (媒体文件)
-   ├─► tags.py   ──► tags.json (.photowall/ 增量与断点缓存)
-   └─► assets.py ──► assets.js (融合标签与媒体元数据)
-index.py ─────────► 复制 index.html 至相册根目录
+   ├─► tags.py   ──► .photowall/tags.json (.photowall/checkpoints/tags/ 增量断点缓存)
+   └─► assets.py ──► .photowall/assets.json (.photowall/checkpoints/assets/ 增量断点缓存)
+index.py ─────────► 将 assets.json 注入 index.html 并输出至相册根目录
 ```
 
 ## 开发与测试

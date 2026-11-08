@@ -33,22 +33,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser_index = subparsers.add_parser(
         "index",
-        help="全量索引相册：生成 tags.json、assets.js 并输出 index.html",
-        description=f"PhotoWall v{version_str} - 从指定的 --home 中查找 assets 目录，并输出 .photowall、tags.json、assets.js 与 index.html",
+        help="全量索引相册：生成 tags.json、assets.json 并输出 index.html",
+        description=f"PhotoWall v{version_str} - 从指定的 --home 中查找 assets 目录，并在 .photowall 中生成 tags.json、assets.json，最终输出 index.html",
     )
     index.build_parser(parser_index)
 
     parser_tags = subparsers.add_parser(
         "tags",
-        help="使用 WD14 Tagger 自动为图片打标并生成 tags.json",
-        description=f"PhotoWall v{version_str} - 从指定的 --home 中使用 WD14 Tagger AI 模型增量扫描并为 assets/ 图片生成 tags.json 标签缓存",
+        help="使用 WD14 Tagger 自动为图片打标并生成 .photowall/tags.json",
+        description=f"PhotoWall v{version_str} - 从指定的 --home 中使用 WD14 Tagger AI 模型增量扫描并为 assets/ 图片生成 .photowall/tags.json 标签缓存",
     )
     tags.build_parser(parser_tags)
 
     parser_assets = subparsers.add_parser(
         "assets",
-        help="扫描 assets 目录并生成 assets.js 元数据",
-        description=f"PhotoWall v{version_str} - 从指定的 --home 中扫描 assets/ 目录下的所有媒体文件，融合标签并生成 assets.js",
+        help="扫描 assets 目录并生成 .photowall/assets.json 元数据",
+        description=f"PhotoWall v{version_str} - 从指定的 --home 中扫描 assets/ 目录下的所有媒体文件，融合标签并生成 .photowall/assets.json",
     )
     assets.build_parser(parser_assets)
 

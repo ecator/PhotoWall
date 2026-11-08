@@ -6,8 +6,8 @@ assets.py - 照片墙元数据生成脚本
     photowall assets --title "我的二次元画廊"   # 指定自定义相册标题
 
 功能说明:
-    1. 自动扫描 assets/ 目录下的所有图片与视频，无条件全量生成 assets.js。
-    2. 校验 tags.json：
+    1. 自动扫描 assets/ 目录下的所有图片与视频，生成 .photowall/assets.json。
+    2. 校验 .photowall/tags.json：
        - 若 tags.json 不存在，输出显眼警告提示用户先运行 photowall tags；
        - 若某张图片的文件大小或修改时间与 tags.json 不一致，输出该文件的 FullName 警告。
     3. 解析每张图片的真实尺寸，并自动根据 EXIF Orientation 校正宽高旋转。
@@ -31,12 +31,37 @@ from typing import Any
 from PIL import ExifTags, Image
 from tqdm import tqdm
 
+from .checkpoints import (
+    DEFAULT_CHECKPOINT_INTERVAL,
+    cleanup_expired_checkpoints,
+    load_checkpoints,
+)
+from .checkpoints import (
+    get_checkpoint_dir as _get_checkpoint_dir,
+)
+from .checkpoints import (
+    save_checkpoint as _save_checkpoint,
+)
 from .scanner import (
     is_video_file,
     natural_sort_key,
     scan_media_files,
 )
 from .version import __version__
+
+
+def get_checkpoint_dir(home_dir: Path) -> Path:
+    """获取 assets 断点缓存目录 (.photowall/checkpoints/assets)。"""
+    return _get_checkpoint_dir(home_dir, "assets")
+
+
+def save_checkpoint(
+    checkpoint_dir: Path,
+    chunk_data: dict[str, dict[str, Any]],
+    chunk_id: str,
+) -> Path | None:
+    """原子化写入单个 assets 断点缓存 JSON 文件 (assets_xxx.json)。"""
+    return _save_checkpoint(checkpoint_dir, chunk_data, chunk_id, prefix="assets")
 
 
 def encode_url_path(rel_path: str) -> str:
@@ -206,7 +231,7 @@ def compute_aspect_tags(
 
 def parse_media_file(
     item: tuple[Path, str, str, int, int],
-) -> tuple[str, int, int, int, int, float]:
+) -> tuple[str, int, int, int, int, int, float]:
     """
     单文件解析任务 (供多线程池并发调用)。
     返回: (rel_path, size, mtime, width, height, final_timestamp, duration)
@@ -233,7 +258,7 @@ def build_parser(
     """构建 assets 命令的命令行参数解析器。"""
     if parser is None:
         parser = argparse.ArgumentParser(
-            description=f"PhotoWall v{__version__} - 照片墙 assets.js 全量生成脚本"
+            description=f"PhotoWall v{__version__} - 照片墙 assets.json 全量生成脚本"
         )
     parser.add_argument(
         "--home",
@@ -254,29 +279,40 @@ def build_parser(
         action="store_true",
         help="忽略本地元数据缓存，强制重新使用多线程读取并解析所有媒体文件的尺寸与时长",
     )
+    parser.add_argument(
+        "--checkpoint-interval",
+        type=int,
+        default=DEFAULT_CHECKPOINT_INTERVAL,
+        help=f"断点续传缓存步长 (默认: 每 {DEFAULT_CHECKPOINT_INTERVAL} 个媒体文件保存一个 checkpoint)",
+    )
     return parser
 
 
 def run(args: argparse.Namespace) -> None:
-    """执行 assets.js 生成主流程。"""
+    """执行 assets.json 生成主流程。"""
     home_dir = (
         (getattr(args, "home", None) or getattr(args, "dir", None)) or Path.cwd()
     ).resolve()
     album_title = getattr(args, "title", None) or home_dir.name or "PhotoWall"
     assets_dir = home_dir / "assets"
-    tags_file = home_dir / "tags.json"
-    output_file = home_dir / "assets.js"
     media_cache_dir = home_dir / ".photowall"
     media_cache_dir.mkdir(parents=True, exist_ok=True)
-    media_cache_file = media_cache_dir / "assets_cache.json"
+    tags_file = media_cache_dir / "tags.json"
+    output_file = media_cache_dir / "assets.json"
+    checkpoint_dir = get_checkpoint_dir(home_dir)
+    checkpoint_interval = getattr(
+        args, "checkpoint_interval", DEFAULT_CHECKPOINT_INTERVAL
+    )
+    if checkpoint_interval <= 0:
+        checkpoint_interval = DEFAULT_CHECKPOINT_INTERVAL
 
     if not assets_dir.is_dir():
         print(f"[错误] 未找到 assets 目录: {assets_dir.resolve()}")
         sys.exit(1)
 
-    print(f"[*] PhotoWall v{__version__} - 开始生成 assets.js...")
+    print(f"[*] PhotoWall v{__version__} - 开始生成 assets.json...")
 
-    # 1. 检查并读取 tags.json
+    # 1. 检查并读取 .photowall/tags.json
     tags_data: dict[str, Any] | None = None
     tags_cache: dict[str, dict[str, Any]] = {}
 
@@ -295,20 +331,48 @@ def run(args: argparse.Namespace) -> None:
         print("[警告] 未检测到 tags.json 标签缓存文件！")
         print(f"       期望路径: {tags_file.resolve()}")
         print("       建议先运行: photowall tags 生成 AI 标签。")
-        print("       当前将以无 AI 标签模式继续生成 assets.js...")
+        print("       当前将以无 AI 标签模式继续生成 assets.json...")
         print("=" * 70 + "\n")
 
-    # 2. 读取媒体元数据缓存 (assets_cache.json)
+    # 2. 读取媒体元数据缓存 (.photowall/assets.json 与 .photowall/checkpoints/assets/)
     media_cache: dict[str, dict[str, Any]] = {}
-    if not args.force and media_cache_file.is_file():
-        try:
-            with open(media_cache_file, "r", encoding="utf-8") as f:
-                media_cache = json.load(f)
+    if not getattr(args, "force", False):
+        if output_file.is_file():
+            try:
+                with open(output_file, "r", encoding="utf-8") as f:
+                    assets_data = json.load(f)
+                if isinstance(assets_data, dict):
+                    for it in assets_data.get("items", []):
+                        if not isinstance(it, dict):
+                            continue
+                        folder = it.get("folder", "")
+                        name = it.get("name", "")
+                        rel_path = f"{folder}/{name}" if folder else name
+                        if rel_path:
+                            media_cache[rel_path] = {
+                                "size": it.get("size", 0),
+                                "mtime": it.get("fileMtime", it.get("mtime", 0)),
+                                "width": it.get("width", 0),
+                                "height": it.get("height", 0),
+                                "timestamp": it.get("mtime", 0),
+                                "duration": it.get("duration", 0.0),
+                            }
+                    if isinstance(assets_data.get("files"), dict):
+                        media_cache.update(assets_data["files"])
+                print(
+                    f"[*] 已载入媒体元数据缓存: {output_file.resolve()} (历史条目: {len(media_cache)})"
+                )
+            except Exception as e:
+                print(f"[警告] 读取 assets.json 缓存失败: {e}")
+
+        checkpoint_data = load_checkpoints(checkpoint_dir)
+        if checkpoint_data:
             print(
-                f"[*] 已载入媒体元数据缓存: {media_cache_file.resolve()} (历史条目: {len(media_cache)})"
+                f"[*] 从断点缓存 ({checkpoint_dir.resolve()}) 恢复了 {len(checkpoint_data)} 个媒体的元数据"
             )
-        except Exception as e:
-            print(f"[警告] 读取媒体缓存失败: {e}")
+            media_cache.update(checkpoint_data)
+    else:
+        print("[*] 强制重建模式，忽略已有媒体缓存与断点数据")
 
     # 3. 扫描 assets 目录下的所有媒体文件
     print(f"[*] 扫描资源目录: {assets_dir.resolve()}")
@@ -318,11 +382,9 @@ def run(args: argparse.Namespace) -> None:
     # 4. 统计文件属性并比对缓存 (检测新增、过期及已删除)
     file_info_list: list[tuple[Path, str, str, int, int]] = []
     to_process: list[tuple[Path, str, str, int, int]] = []
-    current_disk_set: set[str] = set()
 
     for p in raw_files:
         rel_to_assets = p.relative_to(assets_dir).as_posix()
-        current_disk_set.add(rel_to_assets)
         try:
             file_stat = p.stat()
             file_size = file_stat.st_size
@@ -330,7 +392,6 @@ def run(args: argparse.Namespace) -> None:
         except OSError as e:
             print(f"[警告] 无法读取文件状态: {p} ({e})")
             continue
-        ext = p.suffix.lower()
         media_type = "video" if is_video_file(p) else "image"
 
         file_tuple = (p, rel_to_assets, media_type, file_size, file_mtime)
@@ -345,58 +406,82 @@ def run(args: argparse.Namespace) -> None:
         ):
             to_process.append(file_tuple)
 
-    cached_count = len(raw_files) - len(to_process)
+    cached_count = len(file_info_list) - len(to_process)
     print(f"[*] 媒体缓存比对: 命中缓存 {cached_count} 个，需解析 {len(to_process)} 个")
 
-    # 5. 多线程并发解析新增或变动的媒体文件
+    # 5. 多线程并发解析新增或变动的媒体文件 (仅对未命中缓存的条目写入新 checkpoint)
     if to_process:
         max_workers = min(16, (os.cpu_count() or 4) * 2)
         print(f"[*] 启动多线程并发解析 (线程数: {max_workers})...")
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            results = list(
-                tqdm(
+        checkpoint_buffer: dict[str, dict[str, Any]] = {}
+        checkpoint_counter = 0
+
+        def flush_checkpoint(counter: int) -> int:
+            nonlocal checkpoint_buffer
+            if not checkpoint_buffer:
+                return 0
+            count = len(checkpoint_buffer)
+            ts = int(datetime.now().timestamp() * 1000)
+            cid = f"{ts}_{counter:04d}"
+            save_checkpoint(checkpoint_dir, checkpoint_buffer, cid)
+            checkpoint_buffer = {}
+            return count
+
+        def record_result(rel_path: str, item_data: dict[str, Any]) -> None:
+            nonlocal checkpoint_counter
+            media_cache[rel_path] = item_data
+            checkpoint_buffer[rel_path] = item_data
+            if len(checkpoint_buffer) >= checkpoint_interval:
+                checkpoint_counter += 1
+                flush_checkpoint(checkpoint_counter)
+
+        try:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=max_workers
+            ) as executor:
+                for (
+                    rel_path,
+                    file_size,
+                    file_mtime,
+                    width,
+                    height,
+                    final_timestamp,
+                    duration,
+                ) in tqdm(
                     executor.map(parse_media_file, to_process),
                     total=len(to_process),
                     desc="多线程解析媒体",
                     unit="文件",
+                ):
+                    entry_data = {
+                        "size": file_size,
+                        "mtime": file_mtime,
+                        "width": width,
+                        "height": height,
+                        "timestamp": final_timestamp,
+                        "duration": duration,
+                    }
+                    record_result(rel_path, entry_data)
+
+            # 将未满分块的剩余数据存盘
+            if checkpoint_buffer:
+                checkpoint_counter += 1
+                flush_checkpoint(checkpoint_counter)
+
+        except KeyboardInterrupt:
+            print("\n[!] 检测到用户中断操作 (Ctrl+C)。")
+            if checkpoint_buffer:
+                checkpoint_counter += 1
+                saved_count = flush_checkpoint(checkpoint_counter)
+                print(
+                    f"[*] 已将未满分块的临时进度 ({saved_count} 个媒体文件) 保存至断点缓存: {checkpoint_dir.resolve()}"
                 )
-            )
-        # pyrefly: ignore[bad-unpacking]
-        for (
-            rel_path,
-            file_size,
-            file_mtime,
-            width,
-            height,
-            final_timestamp,
-            duration,
-        ) in results:
-            media_cache[rel_path] = {
-                "size": file_size,
-                "mtime": file_mtime,
-                "width": width,
-                "height": height,
-                "timestamp": final_timestamp,
-                "duration": duration,
-            }
+            print("[*] 下次启动时将自动从断点继续。")
+            sys.exit(130)
     else:
         print("[*] 所有媒体文件均已命中元数据缓存，跳过耗时解码！")
 
-    # 6. 维护缓存一致性：自动移除磁盘上已删除文件的陈旧条目
-    cleaned_cache = {
-        rel: entry for rel, entry in media_cache.items() if rel in current_disk_set
-    }
-    purged_count = len(media_cache) - len(cleaned_cache)
-    if purged_count > 0:
-        print(f"[*] 缓存维护: 已从缓存中剔除 {purged_count} 个已删除文件的陈旧条目。")
-
-    # 原子写入保存最新的缓存文件
-    temp_cache_file = media_cache_dir / "assets_cache.json.tmp"
-    with open(temp_cache_file, "w", encoding="utf-8") as f:
-        json.dump(cleaned_cache, f, ensure_ascii=False)
-    temp_cache_file.replace(media_cache_file)
-
-    # 7. 组装 items 媒体列表并融合标签
+    # 6. 组装 items 媒体列表并融合标签
     items: list[dict[str, Any]] = []
     all_folder_paths: set[str] = {""}  # 根目录为 ""
     mismatched_tags_count = 0
@@ -425,8 +510,8 @@ def run(args: argparse.Namespace) -> None:
                 curr = f"{curr}/{part}" if curr else part
                 all_folder_paths.add(curr)
 
-        # 直接从已维护的缓存中瞬时获取宽高、时长与拍摄时间
-        cached_meta = cleaned_cache.get(rel_to_assets, {})
+        # 直接从缓存中获取宽高、时长与拍摄时间
+        cached_meta = media_cache.get(rel_to_assets, {})
         width = cached_meta.get("width", 0)
         height = cached_meta.get("height", 0)
         final_timestamp = cached_meta.get("timestamp", file_mtime)
@@ -477,6 +562,7 @@ def run(args: argparse.Namespace) -> None:
             "ext": ext,
             "size": file_size,
             "mtime": final_timestamp,
+            "fileMtime": file_mtime,
             "width": width,
             "height": height,
             "duration": duration,
@@ -597,20 +683,21 @@ def run(args: argparse.Namespace) -> None:
         "items": items,
     }
 
-    # 8. 无条件生成写入 assets.js (原子写入)
-    temp_output_file = home_dir / "assets.js.tmp"
-    js_content = (
-        "// 由 photowall assets 自动生成\nwindow.PHOTO_WALL_DATA = "
-        + json.dumps(wall_data, ensure_ascii=False, indent=2)
-        + ";\n"
-    )
-
+    # 8. 无条件生成写入 .photowall/assets.json (原子写入)
+    temp_output_file = media_cache_dir / "assets.json.tmp"
     with open(temp_output_file, "w", encoding="utf-8") as f:
-        f.write(js_content)
+        json.dump(wall_data, f, ensure_ascii=False, indent=2)
     temp_output_file.replace(output_file)
 
+    # 9. 清理超过 7 天的过期断点缓存文件
+    cleaned_count = cleanup_expired_checkpoints(checkpoint_dir)
+    if cleaned_count > 0:
+        print(
+            f"[*] 已清理 {cleaned_count} 个过期断点分块缓存文件: {checkpoint_dir.resolve()}"
+        )
+
     print("\n" + "=" * 60)
-    print("[√] assets.js 生成成功！")
+    print("[√] assets.json 生成成功！")
     print(f"    - 文件路径: {output_file.resolve()}")
     print(f"    - 相册标题: {album_title}")
     print(f"    - 媒体总数: {len(items)} (图片: {image_count}, 视频: {video_count})")

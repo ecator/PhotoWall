@@ -1827,12 +1827,12 @@
       visibility: hidden;
       transform: translateY(16px) scale(0.9);
       transition: opacity var(--transition-normal),
-                  transform var(--transition-normal),
-                  visibility var(--transition-normal),
-                  background-color var(--transition-fast),
-                  border-color var(--transition-fast),
-                  color var(--transition-fast),
-                  box-shadow var(--transition-fast);
+        transform var(--transition-normal),
+        visibility var(--transition-normal),
+        background-color var(--transition-fast),
+        border-color var(--transition-fast),
+        color var(--transition-fast),
+        box-shadow var(--transition-fast);
       outline: none;
     }
 
@@ -1940,7 +1940,9 @@
       color: var(--danger);
     }
   </style>
-  <script src="assets.js"></script>
+  <script>
+    /*window.PHOTO_WALL_DATA = {};*/
+  </script>
 </head>
 
 <body>
@@ -1969,7 +1971,8 @@
             <div class="step-title">一键全量生成相册索引</div>
             <div class="step-code-row">
               <code class="step-code">photowall index</code>
-              <button class="btn-copy" onclick="copyToClipboard('photowall index', this)"><span class="copy-icon"></span>
+              <button class="btn-copy" onclick="copyToClipboard('photowall index', this)"><span
+                  class="copy-icon"></span>
                 复制</button>
             </div>
           </div>
@@ -2033,7 +2036,8 @@
         </div>
 
         <div class="slider-container" title="调整卡片列宽 (180px - 420px)">
-          <input type="range" id="card-width-slider" class="card-slider card-width-slider" min="180" max="420" value="240" />
+          <input type="range" id="card-width-slider" class="card-slider card-width-slider" min="180" max="420"
+            value="240" />
         </div>
 
         <button id="theme-toggle-btn" class="btn-icon" title="切换深色/浅色主题" aria-label="Toggle Theme"></button>
@@ -2134,7 +2138,9 @@
 
     <!-- Back to Top Button -->
     <button id="back-to-top-btn" class="back-to-top-btn" type="button" title="回到顶部" aria-label="回到顶部">
-      <svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"/></svg>
+      <svg class="svg-icon" viewBox="0 0 24 24">
+        <path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z" />
+      </svg>
     </button>
   </div>
 
@@ -2301,7 +2307,9 @@
             const val = parseInt(saved, 10);
             if (!isNaN(val)) return Math.max(180, Math.min(420, val));
           }
-        } catch (e) {}
+        } catch (e) {
+          console.error(e);
+        }
         const slider = document.getElementById('card-width-slider');
         if (slider && slider.value) {
           const val = parseInt(slider.value, 10);
@@ -2709,7 +2717,9 @@
           if (it.src && it.src.indexOf('%') !== -1) {
             try {
               if (decodeURIComponent(it.src).toLowerCase().includes(q)) return true;
-            } catch (e) { }
+            } catch (e) {
+              console.error(e);
+            }
           }
           if (it.tags) {
             for (const t of it.tags) {
@@ -3158,7 +3168,9 @@
           v.pause();
           v.src = '';
           v.load();
-        } catch (e) { }
+        } catch (e) {
+          console.error(e);
+        }
       });
       container.innerHTML = '';
       STATE.renderedCount = 0;
@@ -3320,7 +3332,9 @@
           if (videoEl) {
             videoEl.pause();
             if (videoEl.readyState >= 1) {
-              try { videoEl.currentTime = 0.5; } catch (e) { }
+              try { videoEl.currentTime = 0.5; } catch (e) {
+                console.error(e);
+              }
             }
           }
         });
@@ -3727,7 +3741,9 @@
         } else if (modal.webkitRequestFullscreen) {
           modal.webkitRequestFullscreen().catch(() => { });
         }
-      } catch (e) { }
+      } catch (e) {
+        console.error(e);
+      }
 
       updateSlideshowHudControls();
       renderSlideshowItem();
@@ -3765,7 +3781,9 @@
             document.webkitExitFullscreen().catch(() => { });
           }
         }
-      } catch (e) { }
+      } catch (e) {
+        console.error(e);
+      }
 
       const stage = document.getElementById('slideshow-stage');
       if (stage) {
