@@ -12,24 +12,33 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      # 🔐 必须：用于 PyPI 的可信发布 (Trusted Publishing) 免密认证
+      # Required for PyPI Trusted Publishing via OIDC token
       id-token: write
 
     steps:
-      # 1. 拉取代码
+      # 1. Check out code (fetch-depth: 0 needed for hatch-vcs tag detection)
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # 2. 安装并配置 uv
+      # 2. Install and configure uv
       - name: Set up uv
         uses: astral-sh/setup-uv@v8.2.0
         with:
           enable-cache: true
 
-      # 3. 使用 uv 构建包 (生成 dist/)
+      # 3. Rewrite relative links in README for PyPI
+      - name: Rewrite relative links in README
+        run: |
+          sed -i -E 's|\]\((\./)?([^:#)][^:)]*)\)|](${{ github.event.repository.html_url }}/blob/main/\2)|g' README.md
+          # Mark README.md as unchanged so hatch-vcs sees a clean worktree instead of appending a dirty dev suffix
+          git update-index --assume-unchanged README.md
+
+      # 4. Build release distributions (dist/)
       - name: Build release distributions
         run: uv build
 
-      # 4. 使用 uv 直接发布到 PyPI
-      # uv 会自动识别 GitHub 的 id-token 并与 PyPI 完成 OIDC 握手，无需任何 Token
+      # 5. Publish directly to PyPI
+      # uv detects GitHub's id-token and handles OIDC exchange with PyPI without API tokens
       - name: Publish to PyPI
         run: uv publish
