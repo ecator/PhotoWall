@@ -2158,6 +2158,7 @@
         <button id="lightbox-zoom-out-btn" class="lightbox-btn" title="缩小"></button>
         <button id="lightbox-zoom-reset-btn" class="lightbox-btn" title="复位/自适应 (快捷键 0)"></button>
         <button id="lightbox-rotate-btn" class="lightbox-btn" title="顺时针旋转 90°"></button>
+        <button id="lightbox-download-btn" class="lightbox-btn" title="下载当前媒体"></button>
         <button id="lightbox-info-btn" class="lightbox-btn" title="显示详情 (快捷键 I)"></button>
         <button id="lightbox-close-btn" class="lightbox-btn" title="关闭灯箱 (快捷键 Esc)"></button>
       </div>
@@ -2264,6 +2265,7 @@
       zoomIn: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zm.5-7H9v2H7v1h2v2h1v-2h2V9h-2z"/></svg>`,
       zoomOut: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zM7 9h5v1H7z"/></svg>`,
       zoomReset: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 12h-2v3h-3v2h5v-5zM7 9h3V7H5v5h2V9zm14-6H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16.01H3V4.99h18v14.02z"/></svg>`,
+      download: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>`,
       rotate: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M7.11 8.53L5.7 7.11C4.8 8.27 4.24 9.61 4.07 11h2.02c.14-.87.49-1.72 1.02-2.47zM6.09 13H4.07c.17 1.39.72 2.73 1.62 3.89l1.41-1.42c-.52-.75-.87-1.6-1.01-2.47zm1.01 5.32c1.16.9 2.51 1.44 3.9 1.61V17.9c-.87-.15-1.71-.49-2.46-1.01L7.1 18.32zM13 4.07V1L8.45 5.55 13 10V6.09c3.84.45 6.8 3.7 6.8 7.66 0 2.21-.91 4.2-2.36 5.64l1.42 1.42C20.67 19.01 21.8 16.63 21.8 13.75c0-4.85-3.6-8.86-8.8-9.68z"/></svg>`,
       info: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`,
       copy: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`,
@@ -3541,6 +3543,18 @@
       updateLightboxDrawer(item);
     }
 
+    function downloadLightboxItem() {
+      const item = STATE.filteredItems[STATE.lightbox.currentIndex];
+      if (!item) return;
+      const a = document.createElement('a');
+      a.href = item.src;
+      a.download = item.name || '';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
     function preloadAdjacentImages() {
       const total = STATE.filteredItems.length;
       if (total <= 1) return;
@@ -4159,6 +4173,7 @@
 
       // Lightbox
       document.getElementById('lightbox-close-btn').innerHTML = ICONS.close;
+      document.getElementById('lightbox-download-btn').innerHTML = ICONS.download;
       document.getElementById('lightbox-prev-btn').innerHTML = ICONS.chevronLeft;
       document.getElementById('lightbox-next-btn').innerHTML = ICONS.chevronRight;
       document.getElementById('lightbox-zoom-in-btn').innerHTML = ICONS.zoomIn;
@@ -4294,6 +4309,7 @@
       document.getElementById('lightbox-zoom-out-btn').addEventListener('click', () => zoomLightbox(0.8));
       document.getElementById('lightbox-zoom-reset-btn').addEventListener('click', resetLightboxTransform);
       document.getElementById('lightbox-rotate-btn').addEventListener('click', rotateLightbox);
+      document.getElementById('lightbox-download-btn').addEventListener('click', downloadLightboxItem);
       document.getElementById('lightbox-info-btn').addEventListener('click', toggleLightboxDrawer);
       document.getElementById('drawer-close-btn').addEventListener('click', toggleLightboxDrawer);
 
