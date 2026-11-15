@@ -173,6 +173,8 @@ BUILTIN_TRANSLATIONS: dict[str, str] = {
     "bunny_suit": "兔女郎",
     "cosplay": "Cosplay",
     "apron": "围裙",
+    "see-through": "透视装",
+    "topless": "上身裸露",
     # 腿部与鞋袜
     "thighhighs": "过膝袜",
     "black_thighhighs": "黑丝过膝袜",
@@ -246,6 +248,9 @@ BUILTIN_TRANSLATIONS: dict[str, str] = {
     "bed": "床",
     "classroom": "教室",
     "sunlight": "阳光",
+    # 其他
+    "asian": "亚洲人",
+    "formal": "正式场合",
 }
 
 # ==============================================================================
