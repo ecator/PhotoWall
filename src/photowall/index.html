@@ -928,6 +928,12 @@
       font-weight: 600;
     }
 
+    .sort-control-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
     .sort-select {
       background-color: var(--bg-secondary);
       border: 1px solid var(--border-color);
@@ -941,6 +947,47 @@
 
     .sort-select:focus {
       border-color: var(--accent);
+    }
+
+    .random-shuffle-btn {
+      background-color: var(--accent);
+      border: 1px solid var(--accent);
+      color: #ffffff;
+      border-radius: var(--radius-sm);
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      white-space: nowrap;
+      transition: all var(--transition-fast);
+      outline: none;
+    }
+
+    .random-shuffle-btn .svg-icon {
+      width: 15px;
+      height: 15px;
+    }
+
+    .random-shuffle-btn.visible {
+      display: inline-flex;
+    }
+
+    .random-shuffle-btn:hover {
+      background-color: var(--accent-hover);
+      border-color: var(--accent-hover);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    .random-shuffle-btn:focus-visible {
+      box-shadow: 0 0 0 3px var(--accent-light);
+    }
+
+    .random-shuffle-btn:active {
+      transform: scale(0.96);
     }
 
     .results-count-text {
@@ -2115,14 +2162,24 @@
 
           <div class="filter-toolbar-right">
             <span id="results-count-text" class="results-count-text">共 0 项</span>
-            <select id="sort-select" class="sort-select" title="媒体排序方式">
-              <option value="default">默认序号</option>
-              <option value="time-desc">时间降序 (最新优先)</option>
-              <option value="time-asc">时间升序 (最早优先)</option>
-              <option value="size-desc">体积降序 (最大优先)</option>
-              <option value="size-asc">体积升序 (最小优先)</option>
-              <option value="name-asc">文件名自然排序</option>
-            </select>
+            <div class="sort-control-group">
+              <select id="sort-select" class="sort-select" title="媒体排序方式">
+                <option value="default">默认序号</option>
+                <option value="time-desc">时间降序 (最新优先)</option>
+                <option value="time-asc">时间升序 (最早优先)</option>
+                <option value="size-desc">体积降序 (最大优先)</option>
+                <option value="size-asc">体积升序 (最小优先)</option>
+                <option value="name-asc">文件名自然排序</option>
+                <option value="random">随机排序</option>
+              </select>
+              <button
+                id="random-shuffle-btn"
+                class="random-shuffle-btn"
+                type="button"
+                title="重新随机打乱"
+                aria-label="重新随机打乱"
+              ></button>
+            </div>
           </div>
         </div>
 
@@ -2300,7 +2357,8 @@
       searchKeyword: '',
       mediaType: 'all', // 'all' | 'image' | 'video' | 'gif'
       selectedTags: new Set(),
-      sortBy: 'default', // 'default' | 'time-desc' | 'time-asc' | 'size-desc' | 'size-asc' | 'name-asc'
+      sortBy: 'default', // 'default' | 'time-desc' | 'time-asc' | 'size-desc' | 'size-asc' | 'name-asc' | 'random'
+      _hasRandomOrder: false,
 
       // Layout & UI
       layoutMode: 'masonry', // 'masonry' | 'grid' | 'square'
@@ -2629,6 +2687,44 @@
 
     let lastFolderScopeKey = null;
 
+    function shuffleRandomOrder() {
+      const items = STATE.allItems || [];
+      const count = items.length;
+      if (count === 0) {
+        STATE._hasRandomOrder = true;
+        return;
+      }
+      const ranks = new Uint32Array(count);
+      for (let i = 0; i < count; i++) {
+        ranks[i] = i;
+      }
+      for (let i = count - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const tmp = ranks[i];
+        ranks[i] = ranks[j];
+        ranks[j] = tmp;
+      }
+      for (let i = 0; i < count; i++) {
+        items[i]._randomRank = ranks[i];
+      }
+      STATE._hasRandomOrder = true;
+    }
+
+    function updateRandomShuffleButton() {
+      const btn = document.getElementById('random-shuffle-btn');
+      if (!btn) return;
+      btn.classList.toggle('visible', STATE.sortBy === 'random');
+    }
+
+    function setSortBy(sortBy) {
+      STATE.sortBy = sortBy || 'default';
+      if (STATE.sortBy === 'random') {
+        shuffleRandomOrder();
+      }
+      updateRandomShuffleButton();
+      runFilterPipeline();
+    }
+
     function runFilterPipeline() {
       const currentScopeKey = `${STATE.isFavoritesView}:${STATE.currentFolder}:${STATE.includeSubfolders}:${STATE.favoritesSet.size}`;
       const scopeChanged = currentScopeKey !== lastFolderScopeKey;
@@ -2736,6 +2832,9 @@
 
       // Step 6: Sorting (skip sort if default since subset maintains monotonic ID order)
       if (STATE.sortBy !== 'default') {
+        if (STATE.sortBy === 'random' && !STATE._hasRandomOrder) {
+          shuffleRandomOrder();
+        }
         results = results.slice();
         results.sort((a, b) => {
           switch (STATE.sortBy) {
@@ -2749,6 +2848,8 @@
               return (a.size || 0) - (b.size || 0);
             case 'name-asc':
               return naturalCompare(String(a.name || ''), String(b.name || ''));
+            case 'random':
+              return (a._randomRank ?? 0) - (b._randomRank ?? 0);
             default:
               return (a.id || 0) - (b.id || 0);
           }
@@ -2758,6 +2859,7 @@
       STATE.filteredItems = results;
 
       // Update UI indicators
+      updateRandomShuffleButton();
       const countEl = document.getElementById('results-count-text');
       if (countEl) {
         countEl.textContent = `共 ${results.length} 项`;
@@ -4154,6 +4256,13 @@
         subfolderCb.checked = STATE.includeSubfolders;
       }
 
+      // Sync sort dropdown in case browser restored form state
+      STATE._hasRandomOrder = false;
+      const sortSelect = document.getElementById('sort-select');
+      if (sortSelect && sortSelect.value) {
+        STATE.sortBy = sortSelect.value;
+      }
+
       // Bind all event listeners
       bindEvents();
 
@@ -4217,6 +4326,10 @@
       // Back to top
       const backToTopBtn = document.getElementById('back-to-top-btn');
       if (backToTopBtn) backToTopBtn.innerHTML = ICONS.arrowUp;
+
+      // Random shuffle button
+      const randomShuffleBtn = document.getElementById('random-shuffle-btn');
+      if (randomShuffleBtn) randomShuffleBtn.innerHTML = ICONS.shuffle + `<span>重新随机</span>`;
     }
 
     function bindEvents() {
@@ -4322,9 +4435,15 @@
 
       // Sort dropdown
       document.getElementById('sort-select').addEventListener('change', (e) => {
-        STATE.sortBy = e.target.value;
-        runFilterPipeline();
+        setSortBy(e.target.value);
       });
+
+      const randomShuffleBtn = document.getElementById('random-shuffle-btn');
+      if (randomShuffleBtn) {
+        randomShuffleBtn.addEventListener('click', () => {
+          setSortBy('random');
+        });
+      }
 
       // Lightbox Header & Nav buttons
       document.getElementById('lightbox-close-btn').addEventListener('click', closeLightbox);
@@ -4513,9 +4632,13 @@
       initApp();
     }
 
-    // Re-synchronize card width on pageshow (handles bfcache or delayed form restoration)
+    // Re-synchronize card width and sort option on pageshow (handles bfcache or delayed form restoration)
     window.addEventListener('pageshow', () => {
       initCardWidth();
+      const sortSelect = document.getElementById('sort-select');
+      if (STATE.allItems.length > 0 && sortSelect && sortSelect.value && sortSelect.value !== STATE.sortBy) {
+        setSortBy(sortSelect.value);
+      }
     });
 
   </script>

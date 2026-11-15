@@ -43,3 +43,27 @@ def test_copy_index_html_includes_card_width_fix(tmp_path):
     content = dest.read_text(encoding="utf-8")
     assert "initCardWidth()" in content
     assert "PHOTOWALL_CARD_WIDTH" in content
+
+
+def test_index_template_random_sort_option(tmp_path):
+    """验证 index.html 内置模板及导出文件包含随机排序选项与打乱逻辑。"""
+    template_path = (
+        Path(__file__).resolve().parent.parent / "src" / "photowall" / "index.html"
+    )
+    html_content = template_path.read_text(encoding="utf-8")
+
+    assert '<option value="random">随机排序</option>' in html_content
+    assert 'id="random-shuffle-btn"' in html_content
+    assert ".random-shuffle-btn.visible" in html_content
+    assert "ICONS.shuffle + `<span>重新随机</span>`" in html_content
+    assert "function shuffleRandomOrder()" in html_content
+    assert "function updateRandomShuffleButton()" in html_content
+    assert "function setSortBy(sortBy)" in html_content
+    assert "case 'random':" in html_content
+    assert "setSortBy(e.target.value);" in html_content
+
+    dest = index.copy_index_html(tmp_path)
+    copied_content = dest.read_text(encoding="utf-8")
+    assert '<option value="random">随机排序</option>' in copied_content
+    assert 'id="random-shuffle-btn"' in copied_content
+    assert "shuffleRandomOrder()" in copied_content
