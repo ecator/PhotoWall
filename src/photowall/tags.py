@@ -67,6 +67,10 @@ BLACKLIST: set[str] = {
     # Danbooru 常见无意义构图/人数词
     "1girl",
     "2girls",
+    "3girls",
+    "4girls",
+    "5girls",
+    "6+girls",
     "multiple_girls",
     "solo",
     "monochrome",
@@ -86,6 +90,10 @@ BLACKLIST: set[str] = {
     "indoors",
     "1boy",
     "2boys",
+    "3boys",
+    "4boys",
+    "5boys",
+    "6+boys",
     "multiple_boys",
 }
 
